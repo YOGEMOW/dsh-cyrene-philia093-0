@@ -108,6 +108,8 @@ test('status：锚点/条目/配额/思源/夜梦/备份/配置齐备', () => {
     assert.equal(status.dream.time, '23:30:00')
     assert.equal(status.backup.keep, 7)
     assert.equal(status.config.siyuan.baseURL, 'http://127.0.0.1:6806')
+    assert.equal(status.volume.current, 0)
+    assert.equal(status.volume.count, 1)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

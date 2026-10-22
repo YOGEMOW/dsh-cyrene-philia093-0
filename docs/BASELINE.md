@@ -248,3 +248,20 @@
 - 手册：`docs/RECOVERY.md`（快照恢复 → 思源恢复 → 迁移备份；限制与自检）。
 - 测试：`tests/restore-cli.test.mjs` 4 项（参数/配置优先级/报表/force 闸）；
   `tests/memory-restore.test.mjs` 继续覆盖解析与写入。全量 **184 项**通过。
+## 17. 面板第二版 + 22 号夜梦排查（2026-10-23 补）
+
+- 面板：四问锚点分块显示；「我是谁」中 `卷·YYYY-MM-DD：…` 行拆到独立「卷记录」卡片，并展示
+  `元/卷.json` 的当前卷号/开始时间/persona 指纹/卷数。思源与夜梦卡片去掉与表单重复的状态 KV，
+  只留一行摘要（上次同步/上次错误；今日整理/任务数）。
+- 22 号夜梦为何空白（证据：`元/梦.log`）：
+  - 23:30 的日程投递到了迁移带进来的旧会话 `session-501c6a67…`，它先领走租约；
+    当前会话 `944fe39a` 与 `aed211f7` 都记录 `skip busy`；
+  - 旧会话 58 秒后 `end kind=completed`，但模型没有写梦志；旧收尾逻辑只写
+    「（自动收尾：本次整理没有写梦志…）」，于是 22 号只剩 140 字节的道歉。
+- 修复：
+  - 启动时 `pruneSchedules(liveCyreneSessionId())`：只留活着的昔涟会话那一条，没有就全清；
+  - `pre-step` 先判断标记：`sessionId !== lastCyreneSessionId` 的标记直接丢弃并记
+    `skip stale`，只有当前会话能触发；
+  - 无梦志时 `fallbackJournal()` 用当天条目生成「今日整理（自动摘要）」（五育计数 + 最近条目）。
+- 测试：`tests/dream.test.mjs` 增加「旧会话标记被丢弃 + 自动摘要」；`tests/panel.test.mjs` 增加卷状态断言。
+  全量 **185 项**通过。

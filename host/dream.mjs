@@ -25,6 +25,7 @@ import {
   saveDreamState,
   writeDreamJournal,
 } from '../memory/dream.js'
+import { loadEntries } from '../memory/entries.js'
 import { snapshotRoot } from '../memory/backup.js'
 import { createPluginMessage, textOf } from '../runtime/rails.mjs'
 
@@ -72,36 +73,39 @@ export function installDream(ctx, service) {
     }
   }
 
-  /** 当前活会话 id 集合（拿不到时返回 null）。 */
-  const liveSessionIds = () => {
+  /** 当前活着的昔涟会话（用于挑选夜梦目标；拿不到返回 ''）。 */
+  const liveCyreneSessionId = () => {
     try {
-      const sessions = ctx.get('sessions')
-      if (sessions === null || typeof sessions !== 'object' || typeof sessions.list !== 'function') return null
-      return new Set(sessions.list().map((session) => String(session?.id ?? '')))
+      const agents = ctx.get('agents')
+      const registry = ctx.get('agentPresets')
+      if (agents === null || typeof agents !== 'object' || typeof agents.list !== 'function') return ''
+      const list = agents.list()
+      if (!Array.isArray(list)) return ''
+      const mine = list.filter((agent) => {
+        try {
+          return cfg.injectPresets.includes(String(registry?.composedPreset(agent.ctx) ?? ''))
+        } catch {
+          return false
+        }
+      })
+      const last = mine[mine.length - 1]
+      return String(last?.id ?? last?.session?.id ?? '')
     } catch {
-      return null
+      return ''
     }
   }
 
   /**
-   * 清理不属于「当前会话 / 活会话」的旧夜梦任务（迁移会带进来已死会话的日程）。
-   * 保留 keepSessionId 与所有活会话；拿不到会话列表时只保留 keepSessionId（或最新一条）。
+   * 只保留 keepSessionId 这一条夜梦任务；其余（迁移带进来的死会话、旧会话）全部删掉。
+   * 同一个时间只该有一个"当前昔涟会话"的夜梦。
    */
   const pruneSchedules = async (keepSessionId = '') => {
     const svc = scheduleService()
     if (svc === null || typeof svc.delete !== 'function') return
     const entries = Object.entries(state.schedules ?? {})
     if (entries.length === 0) return
-    const live = liveSessionIds()
     const keep = new Set()
     if (keepSessionId !== '' && state.schedules[keepSessionId] !== undefined) keep.add(keepSessionId)
-    if (live !== null) {
-      for (const sid of live) if (state.schedules[sid] !== undefined) keep.add(sid)
-    }
-    if (keep.size === 0) {
-      const newest = entries.slice().sort((a, b) => (b[1]?.createdAt ?? 0) - (a[1]?.createdAt ?? 0))[0]
-      if (newest !== undefined) keep.add(newest[0])
-    }
     for (const [sid, record] of entries) {
       if (keep.has(sid)) continue
       try {
@@ -222,6 +226,30 @@ export function installDream(ctx, service) {
     }
   }
 
+  /** 模型没写梦志时的自动摘要（至少留下今天的条目线索，而不是一句道歉）。 */
+  const fallbackJournal = () => {
+    try {
+      const today = dayOf()
+      const entries = loadEntries(root).entries.filter((entry) => entry?.day === today)
+      if (entries.length === 0) return '今天没有新增记忆（自动收尾）。'
+      const counts = { 德: 0, 智: 0, 体: 0, 美: 0, 劳: 0 }
+      for (const entry of entries) if (counts[entry.axis] !== undefined) counts[entry.axis] += 1
+      const recent = entries
+        .slice(-6)
+        .map((entry) => `- [${entry.axis ?? '美'}] ${String(entry.text ?? '').slice(0, 90)}`)
+      return [
+        '今日整理（自动摘要）',
+        '',
+        `共 ${entries.length} 条：德 ${counts.德}｜智 ${counts.智}｜体 ${counts.体}｜美 ${counts.美}｜劳 ${counts.劳}`,
+        '',
+        '最近条目：',
+        ...recent,
+      ].join('\n')
+    } catch {
+      return '（自动收尾：本次整理没有写梦志，仅记录状态。请查看 元/梦.log。）'
+    }
+  }
+
   /** 收尾：日档 dreamed 标记、兜底梦志、释放租约、按需快照。 */
   const finalize = (sessionId, kind) => {
     const running = state.running
@@ -231,7 +259,7 @@ export function installDream(ctx, service) {
       if (ok) markDayDreamed(root)
       const journalPath = join(root, '梦', `${dayOf()}.md`)
       if (existsSync(journalPath) === false) {
-        writeDreamJournal(root, '（自动收尾：本次整理没有写梦志，仅记录状态。请查看 元/梦.log。）')
+        writeDreamJournal(root, fallbackJournal())
       }
       releaseDreamLease(state, ok ? 'done' : 'failed')
       saveDreamState(root, state)
@@ -253,7 +281,7 @@ export function installDream(ctx, service) {
     }
   }
 
-  // 全局 pre-step：只处理昔涟预设会话；标记优先。
+  // 全局 pre-step：只处理昔涟预设会话；标记优先，且只认"当前会话"的标记。
   const preStep = ctx.on('agent/pre-step', async (payload, next) => {
     const decision = await next()
     try {
@@ -261,14 +289,21 @@ export function installDream(ctx, service) {
       if (agent === undefined || allowed(agent) !== true) return decision
       const sessionId = String(agent?.session?.id ?? '')
       if (sessionId === '') return decision
+      const messages = Array.isArray(decision?.messages) ? decision.messages : []
+      const markerMsg = messages.find((message) => textOf(message).includes(DREAM_MARKER))
+      if (markerMsg !== undefined) {
+        // 迁移/旧日程可能把标记投到早已不用的会话；只允许当前会话触发。
+        if (state.lastCyreneSessionId !== sessionId) {
+          logDream(root, `skip stale session=${sessionId} last=${state.lastCyreneSessionId}`)
+          return { ...decision, messages: messages.filter((message) => message !== markerMsg) }
+        }
+        return handleTrigger(decision, messages, markerMsg, sessionId)
+      }
       if (state.lastCyreneSessionId !== sessionId) {
         state.lastCyreneSessionId = sessionId
         saveDreamState(root, state)
         void ensureSchedule(sessionId)
       }
-      const messages = Array.isArray(decision?.messages) ? decision.messages : []
-      const markerMsg = messages.find((message) => textOf(message).includes(DREAM_MARKER))
-      if (markerMsg !== undefined) return handleTrigger(decision, messages, markerMsg, sessionId)
       return decision
     } catch {
       return decision
@@ -321,8 +356,8 @@ export function installDream(ctx, service) {
   }
 
   logMeta('梦.log', `dream installed time=${cfg.dream.time} tz=${cfg.dream.timeZone}`)
-  // 迁移会带进来已死会话的日程：启动时先清一遍，只留最近会话/活会话。
-  void pruneSchedules(state.lastCyreneSessionId)
+  // 启动时只留"活着的昔涟会话"那一条；没有活会话就全清，等用户下次说话再挂。
+  void pruneSchedules(liveCyreneSessionId())
   return () => {
     for (const dispose of disposers) {
       try {

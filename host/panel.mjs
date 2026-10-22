@@ -12,6 +12,7 @@
 import { readAnchors } from '../memory/anchor.js'
 import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
+import { readVolumeState } from '../memory/persona.js'
 import { restoreFromSiYuan } from '../memory/restore.js'
 import { readSettings, writeSettings } from '../memory/settings.js'
 import { quotaUsage } from '../memory/store.js'
@@ -74,8 +75,23 @@ export function buildPanelStatus({ service, agents } = {}) {
   const maintenance = service?.maintenance?.status?.() ?? {}
   const dream = service?.dream?.status?.() ?? {}
   const siyuan = config.siyuan ?? {}
+  let volume = { current: 0, volumes: [], hash: '', startedAt: 0 }
+  try {
+    const state = readVolumeState(root)
+    const current = (state.volumes ?? []).find((item) => Number(item?.id) === Number(state.current)) ?? {}
+    volume = {
+      current: Number(state.current) || 0,
+      count: (state.volumes ?? []).length,
+      startedAt: Number(current.started_at) || 0,
+      reason: current.reason ?? '',
+      hash: typeof current.persona_hash === 'string' ? current.persona_hash : '',
+    }
+  } catch {
+    /* ignore */
+  }
   return {
     root,
+    volume,
     entries: {
       total: entries.length,
       active: entries.filter((entry) => entry?.status !== 'archived').length,

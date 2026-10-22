@@ -77,6 +77,22 @@ window.__ModuleLoader__.load({
       kv: { display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr)', gap: '7px 12px', fontSize: 13 },
       k: { color: c.text3, fontSize: 12, lineHeight: '1.6' },
       v: { color: c.text, wordBreak: 'break-word', minWidth: 0 },
+      anchorBlock: { borderTop: `1px solid ${c.border}`, padding: '10px 0 2px' },
+      anchorBlockFirst: { borderTop: 'none', paddingTop: 0 },
+      anchorLabel: { fontSize: 12, color: c.text3, marginBottom: 4 },
+      anchorText: { fontSize: 13, color: c.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.7 },
+      mutedLine: { fontSize: 12, color: c.text3, marginBottom: 12, wordBreak: 'break-word' },
+      volumeLog: {
+        fontSize: 12,
+        color: c.text2,
+        lineHeight: 1.7,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        background: c.layer2,
+        border: `1px solid ${c.border}`,
+        borderRadius: 8,
+        padding: '8px 10px',
+      },
       mono: { fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace', fontSize: 12 },
       stats: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: 8, marginBottom: 10 },
       stat: {
@@ -235,6 +251,17 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** 把「我是谁」里以「卷·」开头的行拆出来，避免和四问锚点混在一起。 */
+    function splitVolume(text) {
+      const logs = []
+      const main = []
+      for (const line of String(text ?? '').split('\n')) {
+        if (/^\s*卷\s*[·:：]/.test(line)) logs.push(line.trim())
+        else main.push(line)
+      }
+      return { main: main.join('\n').trim(), logs }
+    }
+
     // ── 面板 ────────────────────────────────────────────────────────────────
     function Panel() {
       const [state, setState] = React.useState({ loading: true, error: '', data: null })
@@ -324,6 +351,9 @@ window.__ModuleLoader__.load({
       const dreamCfg = current.dream ?? {}
       const disabled = busy !== ''
       const quote = (value) => (value === undefined || value === null || value === '' ? '—' : String(value))
+      const selfSplit = splitVolume(anchors.self)
+      const volume = d.volume ?? {}
+      const volumeLogs = selfSplit.logs
       const bannerStyle = notice.tone === 'ok' ? { ...ui.banner, ...ui.bannerOk } : notice.tone === 'error' ? { ...ui.banner, ...ui.bannerError } : ui.banner
 
       return h(
@@ -367,7 +397,7 @@ window.__ModuleLoader__.load({
           h(Btn, { onClick: refresh }, '刷新')
         ),
         notice.text === '' ? null : h('div', { style: bannerStyle }, notice.text),
-        // 第一行：锚点 + 记忆概况
+        // 第一行：四问锚点 + 记忆概况
         h(
           'div',
           { style: ui.grid },
@@ -375,14 +405,20 @@ window.__ModuleLoader__.load({
             'div',
             { style: ui.card },
             h('div', { style: ui.cardHead }, h('div', { style: ui.cardTitle }, '四问锚点'), h('div', { style: ui.cardHint }, anchors.updatedAt ?? '')),
-            h(KV, {
-              rows: [
-                ['我是谁', quote(anchors.self)],
-                ['你是谁', quote(anchors.user)],
-                ['来处', quote(anchors.origin)],
-                ['去处', quote(anchors.goal)],
-              ],
-            })
+            ...[
+              ['我是谁', selfSplit.main],
+              ['你是谁', anchors.user],
+              ['来处', anchors.origin],
+              ['去处', anchors.goal],
+            ].map(([label, text], index) =>
+              h(
+                'div',
+                { key: label, style: index === 0 ? { ...ui.anchorBlock, ...ui.anchorBlockFirst } : ui.anchorBlock },
+                h('div', { style: ui.anchorLabel }, label),
+                h('div', { style: ui.anchorText }, text === undefined || text === '' ? '（空）' : text)
+              )
+            ),
+            volumeLogs.length > 0 ? h('div', { style: { ...ui.cardHint, marginTop: 8 } }, `「我是谁」里的 ${volumeLogs.length} 条卷记录已单独放到下方「卷记录」卡片。`) : null
           ),
           h(
             'div',
@@ -408,7 +444,7 @@ window.__ModuleLoader__.load({
             )
           )
         ),
-        // 第二行：思源 + 定时
+        // 第二行：卷记录 + 思源
         h(
           'div',
           { style: ui.grid },
@@ -418,18 +454,27 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { style: ui.cardHead },
-              h('div', { style: ui.cardTitle }, '思源镜像'),
-              h(Badge, { tone: mirror.enabled ? 'ok' : 'idle' }, mirror.enabled ? '已开启' : '已关闭')
+              h('div', { style: ui.cardTitle }, '卷记录'),
+              h('div', { style: ui.cardHint }, `当前卷 #${volume.current ?? 0} · 共 ${volume.count ?? 0} 卷`)
             ),
-            h(KV, {
-              rows: [
-                ['地址', quote(mirror.baseURL)],
-                ['笔记本', quote(mirror.notebook)],
-                ['上次同步', mirror.lastSync === '' ? '尚未同步' : mirror.lastSync],
-                ['上次错误', mirror.lastError === '' ? '无' : mirror.lastError],
-              ],
-            }),
-            h('div', { style: ui.divider }),
+            h(
+              'div',
+              { style: ui.mutedLine },
+              `开始于 ${volume.startedAt ? new Date(volume.startedAt).toLocaleString() : '—'}${volume.reason ? ` · ${volume.reason}` : ''}${volume.hash ? ` · persona ${String(volume.hash).slice(0, 12)}…` : ''}`
+            ),
+            volumeLogs.length === 0
+              ? h('div', { style: ui.cardHint }, '（锚点里还没有卷记录）')
+              : h('div', { style: ui.volumeLog }, volumeLogs.join('\n'))
+          ),
+          h(
+            'div',
+            { style: ui.card },
+            h('div', { style: ui.cardHead }, h('div', { style: ui.cardTitle }, '思源镜像')),
+            h(
+              'div',
+              { style: ui.mutedLine },
+              `上次同步 ${mirror.lastSync === '' ? '尚未同步' : mirror.lastSync}${mirror.lastError === '' ? '' : ` · 上次错误：${mirror.lastError}`}`
+            ),
             h(
               'div',
               { style: ui.fieldGrid },
@@ -439,19 +484,26 @@ window.__ModuleLoader__.load({
               h(Field, { caption: '根路径', value: siyuan.rootHPath, onChange: (v) => patch('siyuan', 'rootHPath', v) }),
               h(Field, { caption: 'Token 环境变量名', value: siyuan.tokenEnv, mono: true, onChange: (v) => patch('siyuan', 'tokenEnv', v) })
             )
-          ),
+          )
+        ),
+        // 第三行：夜梦与定时
+        h(
+          'div',
+          { style: ui.grid },
           h(
             'div',
             { style: ui.card },
-            h('div', { style: ui.cardHead }, h('div', { style: ui.cardTitle }, '夜梦与定时'), h('div', { style: ui.cardHint }, '保存后重启生效')),
-            h(KV, {
-              rows: [
-                ['夜梦', `${dream.time ?? '—'} ${dream.timeZone ?? ''}`],
-                ['今日', dream.dreamedToday ? '已整理' : '待整理'],
-                ['备份', `每 ${backup.intervalMinutes ?? 30} 分钟 · ${backup.snapshotHour ?? 3} 点快照 · 保留 ${backup.keep ?? 7} 份`],
-              ],
-            }),
-            h('div', { style: ui.divider }),
+            h(
+              'div',
+              { style: ui.cardHead },
+              h('div', { style: ui.cardTitle }, '夜梦与定时'),
+              h('div', { style: ui.cardHint }, '保存后重启生效')
+            ),
+            h(
+              'div',
+              { style: ui.mutedLine },
+              `夜梦 ${dream.time ?? '—'} ${dream.timeZone ?? ''} · 今日${dream.dreamedToday ? '已整理' : '待整理'} · 任务 ${dream.schedules ?? 0} 个 · 快照保留 ${backup.keep ?? 7} 份`
+            ),
             h(
               'div',
               { style: ui.fieldGrid },
