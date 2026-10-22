@@ -23,8 +23,17 @@
   全部 fail-open。
 - **截面镜像（sealed 语义兜底）**：监听 `system-prompt/assemble`（在 complete 恢复之前拿到全量 section），
   把会被 sealed 吞掉的 `tool:*` / `plan:*` / 未知段以 context 原样回注；`deployment:*` 与人设正文永不镜像；
-  清单写进 `service.diagnostics.sections`，`/cyrene doctor` 展示。- **治理**：`/cyrene doctor`、`/memory`、`/dream`；`host/drift.mjs` 用
+  清单写进 `service.diagnostics.sections`，`/cyrene doctor` 展示。
+- **治理**：`/cyrene doctor`、`/memory`、`/dream`（独立 `cyrene-commands` 行）；`host/drift.mjs` 用
   `agentPresets.readDocument` 对比快照；`scripts/import.mjs` 幂等迁移（旧 `.md` + 一页永恒目录）。
+
+### 实机反馈修复（2026-10-22）
+
+- 命令改为独立 `cyrene-commands` 预设行，修复 `/cyrene doctor` 被当成普通消息的问题；注册过程写
+  `元/命令诊断.log`。
+- 迁移/首次启动补卷 0 的 `persona_hash`（`memory/persona.js`）。
+- 启动时清理迁移带进来的死会话夜梦日程；`schedule.update` 返回未更新时删除重建，不再静默。
+- 迁移报告展示当前日档/记忆总量，并注明“0 新增是幂等重跑，不是迁移失败”。
 
 ### 验证
 
@@ -35,5 +44,5 @@
 ### 已知限制
 
 - **未在真机 profile 安装验证**：安装前必须先卸两个旧插件（preset id `chat`/`cyrene-work` 冲突）。
-- sealed 会吞掉 DSH 未来新增的 prompt section：靠 `host/drift.mjs` + doctor 告警，不自动恢复。
+- sealed 下操作类 prompt section 由截面镜像回注；身份/人设类段默认跳过，靠 doctor 告警人工判断。
 - 思源镜像依赖本地思源与 `SIYUAN_API_TOKEN`；失败只记日志。

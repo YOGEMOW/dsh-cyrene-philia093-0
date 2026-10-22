@@ -89,9 +89,9 @@ test('能力行：与内置快照逐字段一致（只替换 persona，尾部追
       }
       assert.deepEqual(actual, expected, `${mode.id}/${expected.id} 与内置快照不一致`)
     }
-    // tail 行：只允许昔涟运行时行。
+    // tail 行：昔涟运行时 + 命令行（命令独立成行，和 plan-mode 同一种组合方式）。
     const tail = decl.config.plugins.slice(snapshot.plugins.length)
-    assert.deepEqual(tail.map((row) => row.id), ['cyrene-runtime'])
+    assert.deepEqual(tail.map((row) => row.id), ['cyrene-runtime', 'cyrene-commands'])
     // 计划桥必须在 planning 组内，且与 plan-mode 同组（隔离 realm）。
     const planning = decl.config.plugins.find((row) => row.id === 'planning')
     const bridge = planning.config.find((row) => row.id === 'cyrene-plan-bridge')

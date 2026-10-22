@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { resolveConfig } from '../memory/config.js'
+import { ensureVolumePersonaHash } from '../memory/persona.js'
 import { createMemoryService } from './memory-service.mjs'
 import { checkDrift } from './drift.mjs'
 import { installDream } from './dream.mjs'
@@ -45,6 +46,15 @@ export function apply(ctx, rawConfig) {
     const tree = service.ensure()
     if (tree?.ok !== true) {
       ctx?.logger?.warn?.(`[${name}] 记忆目录初始化不完整：${(tree?.errors ?? []).join('；') || '未知原因'}`)
+    }
+    // 卷 0 补章：迁移/首次装机时 import 建卷，persona_hash 可能为空。
+    try {
+      const stamped = ensureVolumePersonaHash(service.root)
+      if (stamped.changed === true) {
+        ctx?.logger?.info?.(`[${name}] 卷 0 persona_hash 已补：${stamped.hash.slice(0, 16)}`)
+      }
+    } catch (error) {
+      ctx?.logger?.warn?.(`[${name}] persona_hash 补章失败（已忽略）：${error instanceof Error ? error.message : String(error)}`)
     }
     try {
       ctx.provide('cyreneMemory', service)

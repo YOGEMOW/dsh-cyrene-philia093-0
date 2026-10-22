@@ -26,6 +26,9 @@
   - `cyrene-runtime`（顶层，`dsh-cyrene-philia093-0/runtime`）：记忆轨道 + 能力总则 +
     称呼/形态/风格/世界书四条上下文轨道 + `memory_*` 工具。其 `config.rails` 控制挂载：
     聊天 = `{nickname:true,style:true,scene:true,worldbook:true}`；工作 = `{worldbook:true}`；
+  - `cyrene-commands`（顶层，`dsh-cyrene-philia093-0/runtime/commands`）：独立命令行，声明
+    `inject: ['commands','cyreneMemory']`，注册 `/cyrene doctor`、`/memory`、`/dream`。
+    **不要**把它塞回 `cyrene-runtime` 的嵌套 inject——实测那条路命令不生效（2026-10-22 实机）。
   - `cyrene-plan-bridge`（**必须**在 `planning` 隔离组内，与 `plan-mode` 同 realm）：
     `dsh-cyrene-philia093-0/runtime/plan-bridge`。
 - 宿主行提供 `cyreneMemory` 服务；运行时缺失该服务时 fail-open（不注入、不报错）。
@@ -122,6 +125,8 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 ## 7. 新卷
 
 - `元/卷.json`：`{ current, volumes: [{ id, started_at, reason, persona_hash, wuyu_version }] }`
+- 卷 0 的 `persona_hash` 由迁移脚本/宿主启动补章（`memory/persona.js` 的 `ensureVolumePersonaHash`）；
+  之后每次开卷都必须写指纹；空指纹视为未开卷完成。
 - 只有人（命令/配置）能开新卷；AI 只能建议并写进梦志。
 - 触发词：人格文本、五育定义、存储结构发生重大变更 → 开新卷；记忆内容变化不开卷。
 - 旧卷的人格快照存 `元/卷/NNN/persona/`，只读。

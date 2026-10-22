@@ -6,7 +6,8 @@
  * 档位 = sealed
  *
  * tail / groupPatches = 昔涟的会话级插件（第 3 步起）：
- *   - cyrene-runtime：记忆轨道 + 能力总则；
+ *   - cyrene-runtime：记忆轨道、能力总则、截面镜像；
+ *   - cyrene-commands：/cyrene doctor、/memory、/dream（独立行，和 plan-mode 同一种组合方式）；
  *   - cyrene-plan-bridge：计划模式桥（必须在 planning 隔离组内）。
  *
  * 风格/场景按原约定不挂工作模式（见 docs/CONTRACT.md 第 4 节与设计文档）。
@@ -27,6 +28,10 @@ export default {
         rails: { nickname: false, style: false, scene: false, worldbook: true },
         sectionMirror: { mode: 'auto', maxChars: 3000, mirrorUnknown: true },
       },
+    },
+    {
+      id: 'cyrene-commands',
+      name: 'dsh-cyrene-philia093-0/runtime/commands',
     },
   ],
   groupPatches: {

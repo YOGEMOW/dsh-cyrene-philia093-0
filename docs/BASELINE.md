@@ -195,3 +195,26 @@
   `tests/commands.test.mjs` 增加 doctor 截面断言。全量 **172 项**通过；YAML round-trip 仍通过。
 - 真机待验：装配监听器在 preset/agent scope 下是否触发（源码路径确认，但无法在沙箱安装验证）。
   若未触发，doctor 会显示「未观测到装配」，此时退回 drift 告警 + 静态扫描。
+
+## 14. 实机反馈修复（2026-10-22，装进桌面 profile 后）
+
+实机（desktop profile，v0.1.0）反馈五条，已修：
+
+1. **`/cyrene doctor` 被当普通消息**：命令原先注册在 `cyrene-runtime` 的嵌套
+   `inject(['systemPrompt','cyreneMemory'])` 里（二级 inject + `commands`），实测不生效。
+   改为**独立预设行** `cyrene-commands`（`dsh-cyrene-philia093-0/runtime/commands`，
+   `inject: ['commands','cyreneMemory']`），与 `plan-mode` 同一种组合方式；注册结果写
+   `元/命令诊断.log`。runtime 不再安装命令。
+2. **`元/卷.json` 的 persona_hash 空串**：迁移脚本建卷时写空；新增 `memory/persona.js`
+   （`personaHash` / `readVolumeState` / `ensureVolumePersonaHash`），import 建卷写指纹、
+   宿主启动补章；`runtime/volume.mjs` 复用同一实现。
+3. **三条夜梦日程里两条是死会话**：`installDream` 启动时 `pruneSchedules`——保留
+   `lastCyreneSessionId` 与 `sessions.list()` 里的活会话，其余用 `schedule.delete` 清掉；
+   `ensureSchedule` 也顺手 prune。`schedule.update` 返回 `updated !== true` 时记
+   `update failed code=…` 并删除重建（旧日志的 `code=unknown` 来自迁移带过来的旧插件日志）。
+4. **迁移报告像没搬成**：报告改为「当前数据：N 天日档 / M 条记忆 + 本次复制/导入 + 幂等说明」，
+   明确 0 新增不是失败。
+5. **体 = 0**：数据现状，不是缺陷；五育归属由写入方决定，不自动编造。
+
+验证：全量 **175 项测试**通过；`npm run check` 一致；YAML round-trip 通过。命令修复需重启桌面端后
+用 `/cyrene doctor` 与 `元/命令诊断.log` 复验；若日志无 `apply: commands=function`，则行未挂载。

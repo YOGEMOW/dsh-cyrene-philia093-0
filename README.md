@@ -35,9 +35,12 @@
 - 第 5 步：能力快照漂移治理——`host/drift.mjs` 用 `agentPresets.readDocument` 读取运行时
   内置预设，与 `modes/base/*.json` 行 id 对比；缺行/多行只告警并写进
   `service.diagnostics.drift`；构建测试新增「cyrene 模块不得注册 prompt section」；`runtime/section-mirror.mjs` 在 `system-prompt/assemble`（complete 恢复之前）拿全量 section，把会被 sealed 吞掉的 `tool:*`/`plan:*`/未知段以 context 原样回注（`deployment:*` 与人设正文永不镜像），doctor 展示镜像/跳过清单。
-- 第 6 步：`/cyrene doctor`、`/memory`、`/dream` 命令；迁移演练测试（合成数据，源数据不动）；
+- 第 6 步：`/cyrene doctor`、`/memory`、`/dream` 命令（**独立 `cyrene-commands` 行**，与 `plan-mode`
+  同一种组合方式；注册结果写 `元/命令诊断.log`）；迁移演练测试（合成数据，源数据不动）；
   GitHub Actions Windows + Linux 矩阵；CHANGELOG 与版本一致性测试。
-  全量 **172 项测试通过**。
+- 实机反馈修复（2026-10-22）：命令改为独立行（嵌套 inject 下命令不生效）；迁移/首次启动补卷 0
+  `persona_hash`；启动时清理死会话的夜梦日程、`update` 失败改为删除重建；迁移报告加当前数据总量
+  与幂等说明。全量 **175 项测试通过**。
 
 | 步 | 内容 | 状态 |
 |---|---|---|

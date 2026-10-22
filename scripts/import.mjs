@@ -33,6 +33,7 @@ import {
   writeJSON,
 } from '../memory/store.js'
 import { hashText, normalizeEntry } from '../memory/parse.js'
+import { personaHash, ensureVolumePersonaHash } from '../memory/persona.js'
 
 /** 递归复制：目标已存在则不覆盖。 */
 function copyTree(src, dst, rel = '') {
@@ -230,15 +231,22 @@ export function runImport(options = {}) {
           id: 0,
           started_at: Date.now(),
           reason: 'migrated from dsh-cyrene / dsh-cyrene-eternal-page-remembrance',
-          persona_hash: '',
+          persona_hash: personaHash(),
           wuyu_version: '1',
         },
       ],
     })
   }
+  // 已存在的卷（例如上一次迁移建的空章）也补上指纹。
+  if (!dryRun) {
+    const stamped = ensureVolumePersonaHash(root)
+    if (stamped.changed === true) log(`卷 0 persona_hash 已补：${stamped.hash.slice(0, 16)}`)
+  }
 
   const reportPath = path.join(metaDir, '迁移报告.md')
   if (!dryRun) {
+    const days = listDays(root)
+    const totalEntries = days.reduce((sum, day) => sum + (readDay(root, day).entries?.length ?? 0), 0)
     const lines = [
       '# 迁移报告',
       '',
@@ -246,11 +254,13 @@ export function runImport(options = {}) {
       `- 新根目录：\`${root}\``,
       `- 旧记忆：\`${legacyPath}\``,
       `- 一页永恒目录：\`${eternalDir}\``,
-      `- 复制文件：${summary.copied}`,
-      `- 导入条目：${summary.imported}`,
-      `- 跳过重复：${summary.duplicated}`,
+      `- 当前数据：${days.length} 天日档 / ${totalEntries} 条记忆`,
+      `- 本次复制文件：${summary.copied}（目标已存在则跳过）`,
+      `- 本次导入条目：${summary.imported}；跳过重复：${summary.duplicated}`,
       `- 迁移配置：${summary.configs.join('、') || '无'}`,
       `- 错误：${summary.errors.length === 0 ? '无' : `${summary.errors.length} 条`}`,
+      '',
+      '> 导入是幂等的，可以重复执行。本次复制/导入为 0 只表示没有新增，不是迁移失败。',
       '',
     ]
     atomicWrite(reportPath, lines.join('\n'))

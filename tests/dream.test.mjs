@@ -11,7 +11,7 @@ import path from 'node:path'
 
 import { resolveConfig } from '../memory/config.js'
 import { ensureTree, resolveRoot } from '../memory/store.js'
-import { DREAM_MARKER, dreamedToday, loadDreamState } from '../memory/dream.js'
+import { DREAM_MARKER, dreamedToday, loadDreamState, saveDreamState } from '../memory/dream.js'
 import { installDream } from '../host/dream.mjs'
 
 const setup = () => {
@@ -130,6 +130,64 @@ test('schedule 服务缺失：只记日志，不影响会话', async () => {
     const out = await preStep({ agent: { ctx: {}, session: { id: 's3' } } }, async () => ({ kind: 'enter', messages: [] }))
     assert.equal(out.messages.length, 0)
     assert.equal(fs.existsSync(path.join(root, '元', '日程.log')), true)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('启动清理旧会话日程；update 失败时重建', async () => {
+  const { dir, root } = setup()
+  try {
+    const deleted = []
+    const created = []
+    const oldTask = { id: 'old', title: '一页永恒·夜梦', kind: 'daily', time: '23:00:00', timeZone: 'Asia/Shanghai' }
+    const schedule = {
+      async list({ sessionId }) {
+        return sessionId === 'live1' ? [oldTask] : []
+      },
+      async delete({ sessionId, id }) {
+        deleted.push({ sessionId, id })
+        return true
+      },
+      async update() {
+        return { updated: false, code: 'unknown' }
+      },
+      async create(sessionId, task) {
+        created.push({ sessionId, task })
+        return `new-${created.length}`
+      },
+    }
+    const handlers = new Map()
+    const ctx = {
+      get(name) {
+        if (name === 'schedule') return schedule
+        if (name === 'agentPresets') return { composedPreset: () => 'chat' }
+        return undefined
+      },
+      on(event, fn) {
+        handlers.set(event, fn)
+        return () => handlers.delete(event)
+      },
+      logger: { info() {}, warn() {} },
+    }
+    const state = loadDreamState(root)
+    state.schedules = { deadA: { id: 'ta', createdAt: 1 }, deadB: { id: 'tb', createdAt: 2 } }
+    state.lastCyreneSessionId = ''
+    saveDreamState(root, state)
+
+    const service = serviceFor(root)
+    installDream(ctx, service)
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    const afterPrune = loadDreamState(root)
+    assert.equal(deleted.some((item) => item.id === 'ta'), true, '较旧的死会话日程应被删除')
+    assert.equal(afterPrune.schedules.deadA, undefined)
+    assert.equal(afterPrune.schedules.deadB !== undefined, true, '保留最新一条')
+
+    await service.dream.ensureSchedule('live1')
+    assert.equal(deleted.some((item) => item.id === 'old'), true, 'update 失败后应删除旧任务')
+    assert.equal(created.length, 1, '应重建任务')
+    const log = fs.readFileSync(path.join(root, '元', '日程.log'), 'utf8')
+    assert.match(log, /update failed code=unknown/)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

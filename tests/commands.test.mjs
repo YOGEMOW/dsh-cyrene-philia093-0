@@ -10,7 +10,7 @@ import path from 'node:path'
 import { ensureTree, resolveRoot } from '../memory/store.js'
 import { resolveConfig } from '../memory/config.js'
 import { writeThroughGate } from '../runtime/wuyu.mjs'
-import { installCommands } from '../runtime/commands.mjs'
+import { installCommands, apply as applyCommands } from '../runtime/commands.mjs'
 
 const setup = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'philia-cmd-'))
@@ -109,6 +109,38 @@ test('/memory 输出锚点与统计；/dream 转发到 service.dream', async () 
     installCommands(ctx2, serviceFor(root), '0.1.0')
     const noDream = await ctx2.defs[2].handler({})
     assert.equal(noDream.kind, 'error')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('行插件 apply：直接注册到 ctx.commands，并写命令诊断日志', async () => {
+  const { dir, root } = setup()
+  try {
+    const defs = []
+    const ctx = {
+      commands: {
+        register(definition) {
+          defs.push(definition)
+          return () => {}
+        },
+      },
+      cyreneMemory: serviceFor(root),
+      logger: { warn() {} },
+      get() {
+        return undefined
+      },
+    }
+    applyCommands(ctx)
+    assert.deepEqual(defs.map((def) => def.name), ['cyrene', 'memory', 'dream'])
+    const doctor = defs[0].handler({ rawInput: 'doctor', agent: { session: { header: {} } } })
+    assert.equal(doctor.kind, 'success')
+    assert.match(doctor.text, /cyrene doctor/)
+    const diag = path.join(root, '元', '命令诊断.log')
+    assert.equal(fs.existsSync(diag), true)
+    const log = fs.readFileSync(diag, 'utf8')
+    assert.match(log, /registered cyrene/)
+    assert.match(log, /registered dream/)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

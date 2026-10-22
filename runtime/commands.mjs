@@ -6,6 +6,9 @@
  *
  * 只在挂了 cyrene-runtime 的两个预设里注册；标准模式不可见。
  */
+import { appendFileSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { readAnchors, renderAnchorBlock } from '../memory/anchor.js'
 import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
@@ -14,6 +17,27 @@ import { personaHash } from './volume.mjs'
 import { BUDGETS, ORDERS } from './rails.mjs'
 
 const AXES = ['德', '智', '体', '美', '劳']
+
+/** 版本号（doctor 展示）。 */
+const VERSION = (() => {
+  try {
+    const parsed = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    return typeof parsed?.version === 'string' ? parsed.version : '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+})()
+
+/** 诊断日志：命令注册是否真的接上了（写进记忆根的 元/命令诊断.log）。 */
+function diag(root, line) {
+  try {
+    if (typeof root === 'string' && root !== '') {
+      appendFileSync(join(root, '元', '命令诊断.log'), `[${new Date().toISOString()}] ${line}\n`)
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 /** 当前会话的 preset id（best-effort）。 */
 function presetOf(ctx, agent) {
@@ -138,58 +162,79 @@ export function memoryText({ service }) {
   ].join('\n')
 }
 
+/** 三个命令的定义。 */
+export function commandDefinitions(scope, service, pluginVersion = VERSION) {
+  return [
+    {
+      name: 'cyrene',
+      description: 'cyrene doctor：诊断记忆/轨道/漂移/夜梦/维护状态',
+      input: { hint: '(doctor)' },
+      handler: (invocation) => {
+        const sub = String(invocation?.rawInput ?? '').trim().toLowerCase()
+        if (sub !== '' && sub !== 'doctor') return { kind: 'error', text: '用法：/cyrene doctor' }
+        return { kind: 'success', text: doctorText({ ctx: scope, service, agent: invocation?.agent, pluginVersion }) }
+      },
+    },
+    {
+      name: 'memory',
+      description: '一页永恒记忆概览：四问锚点 + 五育统计 + 待定 + 最近条目',
+      input: { hint: '' },
+      handler: () => ({ kind: 'success', text: memoryText({ service }) }),
+    },
+    {
+      name: 'dream',
+      description: '手动触发一次夜梦整理（六阶段）',
+      input: { hint: '(force)' },
+      handler: async (invocation) => {
+        const trigger = service?.dream?.triggerDream
+        if (typeof trigger !== 'function') return { kind: 'error', text: '夜梦调度未安装（config.dream.enabled != true）。' }
+        const result = await trigger(invocation?.agent)
+        return result.ok === true
+          ? { kind: 'success', text: result.message ?? '已启动整理。' }
+          : { kind: 'error', text: result.error ?? '启动失败。' }
+      },
+    },
+  ]
+}
+
+/** 在已有 commands 服务的 scope 上直接注册（不嵌套 inject）。 */
+export function registerCommands(scope, service, pluginVersion = VERSION) {
+  const root = service?.root
+  const targets = commandDefinitions(scope, service, pluginVersion)
+  if (typeof scope?.commands?.register !== 'function') {
+    diag(root, `skip: commands service unavailable (ctx=${Object.keys(scope ?? {}).slice(0, 12).join(',')})`)
+    return []
+  }
+  const disposers = []
+  for (const definition of targets) {
+    try {
+      const dispose = scope.commands.register(definition)
+      disposers.push(dispose)
+      diag(root, `registered ${definition.name}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      diag(root, `register failed ${definition.name}: ${message}`)
+      scope?.logger?.warn?.(`[cyrene-commands] 注册 ${definition.name} 失败：${message}`)
+    }
+  }
+  return disposers
+}
+
 /**
- * 安装命令。
- * @param ctx 预设作用域上下文
- * @param service cyreneMemory 服务
- * @param pluginVersion 版本号（doctor 展示）
+ * 兼容旧入口（嵌套 inject 路径；测试与早期调用）。
  * @returns disposer
  */
-export function installCommands(ctx, service, pluginVersion = '0.0.0') {
-  let disposers = null
+export function installCommands(ctx, service, pluginVersion = VERSION) {
+  let disposers = []
   try {
     ctx.inject(['commands'], (scope) => {
-      const register = (definition) => scope.effect(
-        () => scope.commands.register(definition),
-        `cyrene command ${definition.name}`,
-      )
-      disposers = [
-        register({
-          name: 'cyrene',
-          description: 'cyrene doctor：诊断记忆/轨道/漂移/夜梦/维护状态',
-          input: { hint: '(doctor)' },
-          handler: (invocation) => {
-            const sub = String(invocation?.rawInput ?? '').trim().toLowerCase()
-            if (sub !== '' && sub !== 'doctor') return { kind: 'error', text: '用法：/cyrene doctor' }
-            return { kind: 'success', text: doctorText({ ctx, service, agent: invocation?.agent, pluginVersion }) }
-          },
-        }),
-        register({
-          name: 'memory',
-          description: '一页永恒记忆概览：四问锚点 + 五育统计 + 待定 + 最近条目',
-          input: { hint: '' },
-          handler: () => ({ kind: 'success', text: memoryText({ service }) }),
-        }),
-        register({
-          name: 'dream',
-          description: '手动触发一次夜梦整理（六阶段）',
-          input: { hint: '(force)' },
-          handler: async (invocation) => {
-            const trigger = service?.dream?.triggerDream
-            if (typeof trigger !== 'function') return { kind: 'error', text: '夜梦调度未安装（config.dream.enabled != true）。' }
-            const result = await trigger(invocation?.agent)
-            return result.ok === true
-              ? { kind: 'success', text: result.message ?? '已启动整理。' }
-              : { kind: 'error', text: result.error ?? '启动失败。' }
-          },
-        }),
-      ]
+      disposers = registerCommands(scope, service, pluginVersion)
     })
-  } catch {
-    /* commands 服务不可用时只是没有入口 */
+  } catch (error) {
+    diag(service?.root, `install failed: ${error instanceof Error ? error.message : String(error)}`)
   }
   return () => {
-    for (const dispose of disposers ?? []) {
+    for (const dispose of disposers) {
       try {
         dispose()
       } catch {
@@ -197,4 +242,17 @@ export function installCommands(ctx, service, pluginVersion = '0.0.0') {
       }
     }
   }
+}
+
+/**
+ * 预设行插件入口：作为独立行挂载（与 plan-mode 同一种组合方式）。
+ * 行配置无需参数；依赖 commands + cyreneMemory 由行声明注入。
+ */
+export const inject = ['commands', 'cyreneMemory']
+export const name = 'cyrene-commands'
+
+export function apply(ctx) {
+  const service = ctx.cyreneMemory
+  diag(service?.root, `apply: commands=${typeof ctx.commands?.register}`)
+  registerCommands(ctx, service, VERSION)
 }

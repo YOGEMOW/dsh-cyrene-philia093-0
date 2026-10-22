@@ -19,7 +19,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { installCapability } from './capability.mjs'
-import { installCommands } from './commands.mjs'
 import { installMemoryRail } from './memory-rail.mjs'
 import { installSectionMirror } from './section-mirror.mjs'
 import { installNickname } from './nickname.mjs'
@@ -114,12 +113,6 @@ export function apply(ctx, config = {}) {
         } catch (error) {
           ctx?.logger?.warn?.(`[cyrene-runtime] 世界书轨道失败：${error instanceof Error ? error.message : String(error)}`)
         }
-      }
-
-      try {
-        installCommands(scope, service, VERSION)
-      } catch (error) {
-        ctx?.logger?.warn?.(`[cyrene-runtime] 命令注册失败：${error instanceof Error ? error.message : String(error)}`)
       }
     })
   } catch (error) {

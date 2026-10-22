@@ -72,6 +72,50 @@ export function installDream(ctx, service) {
     }
   }
 
+  /** 当前活会话 id 集合（拿不到时返回 null）。 */
+  const liveSessionIds = () => {
+    try {
+      const sessions = ctx.get('sessions')
+      if (sessions === null || typeof sessions !== 'object' || typeof sessions.list !== 'function') return null
+      return new Set(sessions.list().map((session) => String(session?.id ?? '')))
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 清理不属于「当前会话 / 活会话」的旧夜梦任务（迁移会带进来已死会话的日程）。
+   * 保留 keepSessionId 与所有活会话；拿不到会话列表时只保留 keepSessionId（或最新一条）。
+   */
+  const pruneSchedules = async (keepSessionId = '') => {
+    const svc = scheduleService()
+    if (svc === null || typeof svc.delete !== 'function') return
+    const entries = Object.entries(state.schedules ?? {})
+    if (entries.length === 0) return
+    const live = liveSessionIds()
+    const keep = new Set()
+    if (keepSessionId !== '' && state.schedules[keepSessionId] !== undefined) keep.add(keepSessionId)
+    if (live !== null) {
+      for (const sid of live) if (state.schedules[sid] !== undefined) keep.add(sid)
+    }
+    if (keep.size === 0) {
+      const newest = entries.slice().sort((a, b) => (b[1]?.createdAt ?? 0) - (a[1]?.createdAt ?? 0))[0]
+      if (newest !== undefined) keep.add(newest[0])
+    }
+    for (const [sid, record] of entries) {
+      if (keep.has(sid)) continue
+      try {
+        if (record?.id !== undefined && record.id !== '') await svc.delete({ sessionId: sid, id: record.id })
+        logMeta('日程.log', `prune stale session=${sid} id=${record?.id ?? ''}`)
+      } catch (error) {
+        logMeta('日程.log', `prune failed session=${sid} ${error instanceof Error ? error.message : String(error)}`)
+        continue
+      }
+      delete state.schedules[sid]
+    }
+    saveDreamState(root, state)
+  }
+
   /** 确保某个会话有每日夜梦任务（幂等）。 */
   const ensureSchedule = async (sessionId) => {
     const sid = String(sessionId ?? '')
@@ -104,19 +148,26 @@ export function installDream(ctx, service) {
         const same = existing.kind === 'daily'
           && seconds(existing.time) === seconds(cfg.dream.time)
           && existing.timeZone === cfg.dream.timeZone
-        if (same) return
+        if (same) {
+          state.schedules[sid] ??= { id: existing.id, createdAt: Date.now() }
+          saveDreamState(root, state)
+          await pruneSchedules(sid)
+          return
+        }
         if (typeof svc.update === 'function') {
-          await svc.update({
+          const result = await svc.update({
             sessionId: sid,
             id: existing.id,
             expected: existing,
             change: { kind: 'daily', daily: { time: cfg.dream.time, time_zone: cfg.dream.timeZone } },
           })
-          if (state.schedules[sid] === undefined) {
+          if (result?.updated === true) {
             state.schedules[sid] = { id: existing.id, createdAt: Date.now() }
             saveDreamState(root, state)
+            await pruneSchedules(sid)
+            return
           }
-          return
+          logMeta('日程.log', `update failed code=${result?.code ?? 'unknown'}; recreate session=${sid} id=${existing.id}`)
         }
         if (typeof svc.delete === 'function') await svc.delete({ sessionId: sid, id: existing.id })
       }
@@ -127,6 +178,7 @@ export function installDream(ctx, service) {
       })
       const id = typeof created === 'string' ? created : String(created?.id ?? created?.taskId ?? '')
       state.schedules[sid] = { id, createdAt: Date.now() }
+      await pruneSchedules(sid)
       const ordered = Object.entries(state.schedules).sort((a, b) => (a[1]?.createdAt ?? 0) - (b[1]?.createdAt ?? 0))
       while (ordered.length > (cfg.dream.maxScheduledSessions ?? 3)) {
         const [oldSid, old] = ordered.shift()
@@ -267,6 +319,8 @@ export function installDream(ctx, service) {
   }
 
   logMeta('梦.log', `dream installed time=${cfg.dream.time} tz=${cfg.dream.timeZone}`)
+  // 迁移会带进来已死会话的日程：启动时先清一遍，只留最近会话/活会话。
+  void pruneSchedules(state.lastCyreneSessionId)
   return () => {
     for (const dispose of disposers) {
       try {

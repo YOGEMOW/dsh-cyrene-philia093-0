@@ -39,6 +39,12 @@ test('迁移：首次导入 → 幂等重跑 → 报告/卷/配置齐全；源�
     assert.ok(fs.existsSync(path.join(root, '元', '卷.json')))
     assert.ok(fs.existsSync(path.join(root, '元', '迁移报告.md')))
     assert.ok(fs.existsSync(path.join(root, '元', 'nickname.json')))
+    // 卷 0 必须带 persona 指纹（迁移建卷的空章会被补）。
+    const volume = JSON.parse(fs.readFileSync(path.join(root, '元', '卷.json'), 'utf8'))
+    assert.match(volume.volumes[0].persona_hash, /^[0-9a-f]{64}$/)
+    const report = fs.readFileSync(path.join(root, '元', '迁移报告.md'), 'utf8')
+    assert.match(report, /当前数据：\d+ 天日档 \/ \d+ 条记忆/)
+    assert.match(report, /导入是幂等的/)
 
     // 旧日档被复制进来。
     assert.equal(listDays(root).includes('2026-10-18'), true)

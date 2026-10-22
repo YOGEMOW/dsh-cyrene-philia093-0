@@ -6,47 +6,17 @@
  *   - 开卷时把当前人格语料快照进 `元/卷/<id>/persona/`，并记录 persona_hash；
  *   - `元/卷.json` 记录 current 与历史卷，只增不改。
  */
-import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readJSON, safeRelPath, writeJSON } from '../memory/store.js'
+import { PERSONA_FILES, personaHash, readVolumeState } from '../memory/persona.js'
+import { safeRelPath, writeJSON } from '../memory/store.js'
 
-const PERSONA_FILES = [
-  ['persona/chat.md', 'chat.md'],
-  ['persona/work.md', 'work.md'],
-  ['philosophy/wuyu.md', 'wuyu.md'],
-]
+export { personaHash, readVolumeState }
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '..')
-
-/** 读卷状态（缺省卷 0）。 */
-export function readVolumeState(root) {
-  const file = safeRelPath(root, '元/卷.json')
-  const fallback = {
-    current: 0,
-    volumes: [{ id: 0, started_at: 0, reason: 'initial', persona_hash: '', wuyu_version: '1' }],
-  }
-  if (file === null) return fallback
-  const state = readJSON(file, null)
-  if (state === null || typeof state !== 'object' || !Array.isArray(state.volumes)) return fallback
-  return state
-}
-
-/** 计算人格语料指纹。 */
-export function personaHash() {
-  const hash = createHash('sha256')
-  for (const [rel] of PERSONA_FILES) {
-    try {
-      hash.update(fs.readFileSync(path.join(repoRoot, rel), 'utf8').replace(/\r\n?/g, '\n'))
-    } catch {
-      /* 缺文件不阻塞开卷，指纹只覆盖存在的部分 */
-    }
-  }
-  return hash.digest('hex')
-}
 
 /**
  * 开新卷（只能由人调用）。
