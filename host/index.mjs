@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url'
 import { resolveConfig } from '../memory/config.js'
 import { createMemoryService } from './memory-service.mjs'
 import { checkDrift } from './drift.mjs'
+import { installDream } from './dream.mjs'
+import { installMaintenance } from './maintenance.mjs'
 
 export const name = 'dsh-cyrene-philia093-0'
 
@@ -53,6 +55,20 @@ export function apply(ctx, rawConfig) {
       `[${name}] v${version} 记忆服务已就绪：${service.root}`
         + `（注入预设：${JSON.stringify(service.config.injectPresets)}；夜梦/镜像在第 4b/6 步接入）`
     )
+
+    // 夜梦调度（默认开；schedule 服务不可用时只记日志）。
+    try {
+      installDream(ctx, service)
+    } catch (error) {
+      ctx?.logger?.warn?.(`[${name}] 夜梦调度安装失败（已跳过）：${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    // 定时维护：思源镜像 + 每日快照 + 月度体检/滚动（默认开；全部 fail-open）。
+    try {
+      installMaintenance(ctx, service, rawConfig?.siyuan)
+    } catch (error) {
+      ctx?.logger?.warn?.(`[${name}] 定时维护安装失败（已跳过）：${error instanceof Error ? error.message : String(error)}`)
+    }
 
     // 能力快照漂移检测：不阻断，只告警并记进 diagnostics（doctor 会展示）。
     try {

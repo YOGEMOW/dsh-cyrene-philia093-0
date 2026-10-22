@@ -147,3 +147,18 @@
   全量 **156 项**通过。
 - 已知未做（第 5b/6）：真机 profile 的 sealed 实测（需要安装到 profile）、`/cyrene doctor` 展示漂移、
   版本矩阵与发布。
+
+## 11. 第 4b 步（夜梦 + 定时维护）实际执行结果（2026-10-22）
+
+- 夜梦：`host/dream.mjs`。昔涟会话首次出现时用 DSH `schedule` 服务挂每日 `23:30` 任务
+  （`config.dream`，默认开）；标记消息（`[cyrene-dream]`）到达时在 `agent/pre-step` 里把
+  `memory/dream.js` 的六阶段规程注入标记之后；`turn/end` 收尾：标日档 dreamed、兜底梦志、
+  释放租约、按需快照。租约/去重/force 语义沿用一页永恒。
+- 定时维护：`host/maintenance.mjs`。默认 30 分钟 tick：思源镜像（锚点 + 近 3 天条目 +
+  近 7 天梦志 + 余页）、每日快照（`snapshotHour` 后、保留 7 份）、月度体检与月年滚动。
+  思源默认开（`SIYUAN_DEFAULTS.enabled = true`，本地 `127.0.0.1:6806` / `93-昔涟`，
+  token 走 `SIYUAN_API_TOKEN`）；不可达时只写日志，不阻塞会话。定时器 `unref()`，
+  不阻止进程退出。
+- 测试：`tests/dream.test.mjs`（3：挂任务+注入+收尾、非昔涟跳过、schedule 缺失 fail-open）、
+  `tests/maintenance.test.mjs`（2：快照/体检可跑、备份关闭跳过）。全量 **161 项**通过。
+- 已知未做（第 6 步）：`/cyrene doctor`、`/memory` `/dream` 命令、迁移演练、Windows/两版 DSH 矩阵、发布。
