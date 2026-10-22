@@ -15,9 +15,11 @@
  *   - tools：memory_* / remember / forget（preset 作用域）。
  *   - plan-bridge：独立行 runtime/plan-bridge.mjs，由构建器插进 planning 隔离组。
  */
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { installCapability } from './capability.mjs'
+import { installCommands } from './commands.mjs'
 import { installMemoryRail } from './memory-rail.mjs'
 import { installNickname } from './nickname.mjs'
 import { registerMemoryTools } from './tools.mjs'
@@ -30,6 +32,16 @@ export const inject = []
 
 /** 默认轨道开关（聊天模式全开；工作模式由构建器关掉称呼/风格/场景）。 */
 const DEFAULT_RAILS = { nickname: true, style: true, scene: true, worldbook: true }
+
+/** 版本号（doctor 展示）。 */
+const VERSION = (() => {
+  try {
+    const parsed = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    return typeof parsed?.version === 'string' ? parsed.version : '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+})()
 
 /**
  * 预设行入口。
@@ -94,6 +106,12 @@ export function apply(ctx, config = {}) {
         } catch (error) {
           ctx?.logger?.warn?.(`[cyrene-runtime] 世界书轨道失败：${error instanceof Error ? error.message : String(error)}`)
         }
+      }
+
+      try {
+        installCommands(scope, service, VERSION)
+      } catch (error) {
+        ctx?.logger?.warn?.(`[cyrene-runtime] 命令注册失败：${error instanceof Error ? error.message : String(error)}`)
       }
     })
   } catch (error) {

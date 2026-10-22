@@ -14,7 +14,8 @@
 
 ## 当前状态
 
-**第 4 步已完成（含夜梦与思源镜像默认开）；还差第 6 步的命令/doctor/发布治理。** 现在**仍不可安装**为日常使用：功能齐了，但 doctor、迁移演练、版本矩阵与发布未做。
+**六步全部完成（卷 0 实现完成）。** 尚未在真机 profile 安装验证——安装前必须先卸载两个旧插件
+（preset id `chat`/`cyrene-work` 冲突），按 [docs/MIGRATION.md](docs/MIGRATION.md) 走。
 
 - 第 1 步：`memory/` 迁入一页永恒 0.5.4 引擎（18 模块）+ 五育扩展字段；16 个旧测试文件
   全部通过（121 项）；`scripts/import.mjs` 幂等迁移；根目录解析永不落 CWD。
@@ -29,9 +30,14 @@
   聊天模式四轨全开，工作模式只留世界书（由构建器写入 `rails` 配置）。
 - 第 4 步：五育硬门槛（溯源/五育归属/决策后果/基座只读）→ 日档或 `余页/待定/`；
   `memory_*` + `remember/forget`；待定复检/提升；月检（五育体检写年轮，幂等）+ 年检；
-  新卷（人格快照 + 指纹，只增不改）。剩余：夜梦六阶段调度、思源镜像/快照默认开。
-- 第 4b 步：`host/dream.mjs`——昔涟会话自动挂每日 23:30 夜梦任务（schedule 服务），标记消息到达时注入六阶段规程，`turn/end` 收尾（标 dreamed、兜底梦志、释放租约、按需快照）；`host/maintenance.mjs`——30 分钟维护 tick：思源镜像（锚点/近 3 天条目/近 7 天梦志/余页）、每日快照（保留 7 份）、月度体检与月年滚动。两者默认开、全部 fail-open。
-- 第 5 步：能力快照漂移治理——`host/drift.mjs` 用 `agentPresets.readDocument` 读取运行时内置预设，与 `modes/base/*.json` 行 id 对比；缺行/多行只告警并写进 `service.diagnostics.drift`；构建测试新增「cyrene 模块不得注册 prompt section」。全量 **161 项测试通过**。
+  新卷（人格快照 + 指纹，只增不改）。夜梦 23:30 六阶段与 30 分钟维护 tick（思源镜像、
+  每日快照、月度体检、月年滚动）默认开、全部 fail-open。
+- 第 5 步：能力快照漂移治理——`host/drift.mjs` 用 `agentPresets.readDocument` 读取运行时
+  内置预设，与 `modes/base/*.json` 行 id 对比；缺行/多行只告警并写进
+  `service.diagnostics.drift`；构建测试新增「cyrene 模块不得注册 prompt section」。
+- 第 6 步：`/cyrene doctor`、`/memory`、`/dream` 命令；迁移演练测试（合成数据，源数据不动）；
+  GitHub Actions Windows + Linux 矩阵；CHANGELOG 与版本一致性测试。
+  全量 **167 项测试通过**。
 
 | 步 | 内容 | 状态 |
 |---|---|---|
@@ -40,8 +46,8 @@
 | 2 | 人设资源化 + 构建器 + 装配契约测试 | ✅ |
 | 3 | runtime rails / 能力总则 / 计划桥 | ✅ |
 | 4 | 五育闸门 + 月年复检 + 新卷 + 夜梦/镜像 | ✅ |
-| 5 | 双模式 sealed 全能力 + 漂移治理 | 🔄（✅ sealed 结构契约 + 漂移检测；⏳ 真机 profile 验证） |
-| 6 | 治理收尾 / 文档 / 版本矩阵 / 发布 | ⏳ |
+| 5 | 双模式 sealed 全能力 + 漂移治理 | ✅（结构契约 + 漂移；真机安装待用户） |
+| 6 | 治理收尾 / 文档 / 版本矩阵 / 发布 | ✅ |
 
 ### 构建管线（第 2 步起）
 

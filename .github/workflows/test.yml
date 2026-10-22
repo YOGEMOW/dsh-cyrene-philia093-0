@@ -1,0 +1,26 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 单元测试
+        run: npm test
+      - name: 运行时代码语法检查
+        run: npm run harness:check
+      - name: 生成物一致性
+        run: npm run check
+      - name: 迁移演练（dry-run，合成数据）
+        run: node scripts/import.mjs --dry-run

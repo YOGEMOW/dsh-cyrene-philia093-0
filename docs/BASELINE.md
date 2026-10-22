@@ -162,3 +162,19 @@
 - 测试：`tests/dream.test.mjs`（3：挂任务+注入+收尾、非昔涟跳过、schedule 缺失 fail-open）、
   `tests/maintenance.test.mjs`（2：快照/体检可跑、备份关闭跳过）。全量 **161 项**通过。
 - 已知未做（第 6 步）：`/cyrene doctor`、`/memory` `/dream` 命令、迁移演练、Windows/两版 DSH 矩阵、发布。
+
+## 12. 第 6 步（治理收尾）实际执行结果（2026-10-22）
+
+- 命令（preset 作用域）：`runtime/commands.mjs` 注册 `/cyrene doctor`（根目录、persona 指纹、轨道与预算、
+  记忆/待定、漂移、夜梦、维护/思源状态）、`/memory`（四问锚点 + 五育统计 + 最近条目）、
+  `/dream`（手动触发六阶段整理）。
+- 迁移演练：`scripts/import.mjs` 重构为可导入的 `runImport(options)`（CLI 仅做参数包装）；
+  `tests/migration.test.mjs` 用合成数据验证：首次导入 3 条 / 复制 1 个旧日档 / 写卷与迁移报告 /
+  重跑 0 新增 3 重复 / 源数据一字不动 / dry-run 不落盘。
+- 版本与发布：`tests/version.test.mjs` 校验 package.json（含 `dsh.version`）、
+  `dsh.plugin.json`、`plugin.json` 三处同版本且 CHANGELOG 有条目；新增 `CHANGELOG.md`（0.1.0）。
+- CI：`.github/workflows/test.yml`，ubuntu + windows 矩阵跑 `npm test` / `harness:check` /
+  `check` / `import.mjs --dry-run`（无第三方依赖，不需要 `npm install`）。
+- 全量测试 **167 项**通过；`npm run check` 生成一致。
+- 已知边界：未在真机 profile 安装（会与旧插件 preset id 冲突，安装前必须先卸载旧插件）；
+  sealed 下 DSH 未来新增的 prompt section 靠 drift + doctor 告警，不自动恢复。
