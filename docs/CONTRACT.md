@@ -123,3 +123,17 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 | 能力行 | 重跑 `scripts/build.mjs` → 与内置 base 对比 → doctor 漂移告警 |
 | 注入 order / 预算 | 改本契约 → 升格式版本 → 跑契约测试 |
 | 存储格式 | 改本契约 → 升格式版本 → 写迁移 → 迁移测试 |
+
+## 10. 构建物与真源
+
+| 物 | 性质 | 真源 |
+|---|---|---|
+| `persona/{chat,work}.md` | **真源**（逐字人设） | 人工维护；由 `scripts/extract-legacy.mjs` 从退役插件一次性提取，之后只在 persona/ 改 |
+| `modes/{chat,work}.mode.mjs` | **真源**（薄组合） | 人工维护：id/loaderId/order/base/persona/tail |
+| `modes/base/{standard,cordis}.plugins.json` | **钉版快照**（内置能力行） | 来自安装的 DSH：`dsh-web-app/presets/<base>.patch.yml`；快照带 `dshVersion` 与来源 |
+| `cordis.patch.yml` | **生成物** | `scripts/build.mjs` 从上述三者合成；禁止手改 |
+| `runtime/`、`memory/`、`host/` | 运行时代码 | 人工维护 |
+
+- 人设逐字性由 `tests/build.test.mjs` 保证（persona 文件 === 生成声明里的 prefix）。
+- 能力行与快照逐字段一致由同一测试保证；`!!js` 表达式在快照里是 `{"$js": "..."}`，生成时渲染为 `!!js "<expr>"`。
+- 升级 DSH：更新快照 → `npm run build` → 跑测试 → 重启；`persona/` 必须零 diff。

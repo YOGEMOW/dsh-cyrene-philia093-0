@@ -67,3 +67,18 @@
 - 新增：`tests/memory-philia.test.mjs`（4 项：五育字段往返、旧条目兼容、根目录不落 CWD、基线日档解析）。
 - 迁移：`scripts/import.mjs` 实测——旧 `cyrene-memory.md` 3 条 → 导入 3 条、重复 3 条；一页永恒目录复制 1 个文件；写 `元/卷.json` 与 `元/迁移报告.md`。
 - 已知未做：引擎内的品牌文案（`指南.md`/`prompt.js` 仍写「一页永恒」）留到第 3 步统一替换；`memory/inject.js` 尚未接入 runtime。
+
+## 6. 第 2 步实际执行结果（2026-10-22）
+
+- 人设提取：`scripts/extract-legacy.mjs` 从 `E:/Git/repositoris/DSH-Cyrene` 的 persona 块标量逐字提取：
+  - `persona/chat.md`：852 行 / 14093 字符；
+  - `persona/work.md`：666 行 / 10908 字符；
+  - `--check` 与源逐字一致。
+- 内置 base 快照：`modes/base/standard.plugins.json`（22 行）、`cordis.plugins.json`（23 行），
+  来自 `app.asar:/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/*.patch.yml`，`dshVersion = 0.2.1-rc.2`；
+  `!!js` 表达式保存为 `{"$js": "..."}`。
+- 构建：`scripts/build.mjs` 生成 `cordis.patch.yml`（54 KB，2 个预设声明）；
+  PyYAML 校验通过；声明对象与渲染后 YAML **逐字段 round-trip 一致**（开发期校验，不入库）。
+- 测试：`tests/build.test.mjs` 7 项通过（生成一致、预设元数据、sealed persona、能力行与快照一致、
+  生成确定性、路径前置校验、人设逐字提取）。
+- 已知未做：`modes/*.mode.mjs` 的 `tail` 仍为空 —— 第 3 步接入 runtime 轨道与能力总则/计划桥。

@@ -14,23 +14,39 @@
 
 ## 当前状态
 
-**第 1 步（记忆引擎迁入 + 等价性 + 迁移脚本）已完成。** 现在**仍不可安装**：预设声明与
-runtime 轨道未接入，`cordis.patch.yml` 只有宿主半体骨架。
+**第 2 步（人设资源化 + 构建器 + 装配契约测试）已完成。** 现在**仍不可安装**：runtime 轨道
+（能力总则/计划桥/记忆注入/工具）未接入；`cordis.patch.yml` 虽已生成两份完整预设声明，
+但预设里还没有昔涟的会话级插件。
 
-- `memory/`：一页永恒 0.5.4 的引擎已迁入（18 个模块），新增五育扩展字段（只写非空值，旧条目逐字兼容）；
-- 等价性：旧引擎的 16 个测试文件全部迁入并通过（121 项），另加 4 项新卷扩展测试；
-- `scripts/import.mjs`：旧 `cyrene-memory.md` + 一页永恒目录 → 新根目录，幂等（已实测两次运行第二次 0 导入）；
-- 根目录解析改为**永不落 CWD**（空白 `DSH_HOME` 回落 `~/.dsh`）。
+- 第 1 步：`memory/` 迁入一页永恒 0.5.4 引擎（18 模块）+ 五育扩展字段；16 个旧测试文件
+  全部通过（121 项）；`scripts/import.mjs` 幂等迁移；根目录解析永不落 CWD。
+- 第 2 步：`persona/chat.md`（14093 字符 / 852 行）、`persona/work.md`（10908 字符 / 666 行）
+  从退役插件**逐字提取**；`modes/*.mode.mjs` 薄组合；`scripts/build.mjs` 从
+  `modes/base/{standard,cordis}.plugins.json` 快照合成声明；7 项构建契约测试通过
+  （含 persona 逐字、能力行与快照逐字段一致、YAML 渲染 round-trip）。
 
 | 步 | 内容 | 状态 |
 |---|---|---|
 | 0 | 新仓、契约、基线、骨架 | ✅ |
 | 1 | 记忆引擎迁入 + 等价性 + 迁移脚本 | ✅ |
-| 2 | 人设资源化 + 构建器 + 装配契约测试 | ⏳ |
+| 2 | 人设资源化 + 构建器 + 装配契约测试 | ✅ |
 | 3 | runtime rails / 能力总则 / 计划桥 | ⏳ |
 | 4 | 五育闸门 + 月年复检 + 新卷 | ⏳ |
 | 5 | 双模式 sealed 全能力 + 漂移治理 | ⏳ |
 | 6 | 治理收尾 / 文档 / 版本矩阵 / 发布 | ⏳ |
+
+### 构建管线（第 2 步起）
+
+```
+persona/{chat,work}.md ─┐
+modes/{chat,work}.mode.mjs ─┤
+modes/base/{standard,cordis}.plugins.json ─┴─▶ scripts/build.mjs ─▶ cordis.patch.yml
+```
+
+- `cordis.patch.yml` 是**生成物**，不要手改；`npm run check` 校验与源一致。
+- 人设只改 `persona/`；能力/模式只改 `modes/`；上游人设重新提取用
+  `npm run extract:persona -- --from <旧仓库> --check`。
+- 内置 base 快照带 `dshVersion` 与来源路径；升级 DSH 时用第 5 步的漂移检测对比。
 
 ## 设计要点
 
