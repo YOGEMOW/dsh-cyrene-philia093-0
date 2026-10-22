@@ -22,4 +22,4 @@ dreamed_at: null
 
 > 原话：「周六我不排事了，陪你走。」
 
-<!--cyrene:{"id":"20261018194000-d4e5f6","kind":"decision","axis":"德","q":"你","I":7,"S":7.0,"status":"active","kw":["承诺","取舍"],"src":"conv","src_ids":["s-8f2/ev-51"],"src_quote":"周六我不排事了，陪你走。","consequence":{"self":"少一次会","other":"她记住被优先","relation":"信任+","world":"无","future":"同类选择会被参照"},"links":[{"id":"20261018140201-a1b2c3","type":"因果"}],"fact_time":1792016400000,"reviewed_at":1792016400000,"touched_at":1792016400000,"created_at":1792016400000,"day":"2026-10-18","path":"日/2026/10/2026-10-18.md","sync":true,"n_recall":0}-->
+<!--cyrene:{"id":"20261018194000-d4e5f6","kind":"decision","axis":"德","q":"你","I":7,"S":7.0,"status":"active","kw":["承诺","取舍"],"src":"conv","src_ids":["s-8f2/ev-51"],"src_quote":"周六我不排事了，陪你走。","consequence":{"self":"少一次会","other":"她记住被优先","relation":"信任+","world":"无","future":"同类选择会被参照"},"links":["20261018140201-a1b2c3|因果"],"fact_time":1792016400000,"reviewed_at":1792016400000,"touched_at":1792016400000,"created_at":1792016400000,"day":"2026-10-18","path":"日/2026/10/2026-10-18.md","sync":true,"n_recall":0}-->

@@ -56,3 +56,14 @@
 2. 第 1 步的等价性测试以本基线为准：新引擎对同一输入的解析/检索/写入结果必须与旧引擎一致（语义等价，允许内部字段扩展）。
 3. 迁移测试只使用 `tests/fixtures/baseline/` 的合成样例，不读取真实 `~/.dsh`。
 4. 基线文件本身变更 = 契约变更，需在 `docs/CONTRACT.md` 里记一笔。
+
+## 5. 第 1 步实际执行结果（2026-10-22）
+
+- 引擎迁入：`cyrene-eternal-page-remembrance/lib/*.js`（18 个模块）→ `memory/`，逐字复制后只做三处适配：
+  1. 默认根目录名改为 `cyrene-philia093-0`；
+  2. `resolveRoot` 的空值兜底改为**永不落 CWD**（空白 `DSH_HOME` 回落 `~/.dsh`，都不可用则抛错）；
+  3. `normalizeEntry` 增加五育扩展字段（只收非空值，旧条目序列化逐字不变）。
+- 等价性：旧引擎的 16 个测试文件迁入 `tests/`（`memory-*.test.mjs`）并全部通过，共 121 项。
+- 新增：`tests/memory-philia.test.mjs`（4 项：五育字段往返、旧条目兼容、根目录不落 CWD、基线日档解析）。
+- 迁移：`scripts/import.mjs` 实测——旧 `cyrene-memory.md` 3 条 → 导入 3 条、重复 3 条；一页永恒目录复制 1 个文件；写 `元/卷.json` 与 `元/迁移报告.md`。
+- 已知未做：引擎内的品牌文案（`指南.md`/`prompt.js` 仍写「一页永恒」）留到第 3 步统一替换；`memory/inject.js` 尚未接入 runtime。

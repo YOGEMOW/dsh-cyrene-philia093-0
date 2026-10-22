@@ -44,9 +44,10 @@
   },
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",
-    "harness:check": "node --check host/index.mjs && node --check runtime/index.mjs",
+    "harness:check": "node --check host/index.mjs && node --check host/memory-service.mjs && node --check runtime/index.mjs && node --check scripts/import.mjs",
     "build": "node scripts/build.mjs",
-    "check": "node scripts/build.mjs --check"
+    "check": "node scripts/build.mjs --check",
+    "migrate": "node scripts/import.mjs"
   },
   "engines": {
     "node": ">=22"

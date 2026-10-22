@@ -58,21 +58,29 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 ## 5. 存储
 
 - 根目录：`<DSH_HOME>/cyrene-philia093-0/`（插件配置 `rootDir` 可覆盖）。
-- 布局：
+- 默认根目录**永不落 CWD**：`DSH_HOME` 空白视为未设置，回落 `~/.dsh`；两者都不可用时抛出错误而不是写当前目录。
+- 布局（第 1 步起由记忆引擎实际读写）：
 
 ```
-元/                  四问锚点、卷索引、配额、结构版本、迁移报告（模型不可写）
+锚/                  四问锚点（我是谁/你是谁/来处/去处）
 日/YYYY/MM/YYYY-MM-DD.md
 月/YYYY/YYYY-MM.md
 年/YYYY.md
 梦/YYYY-MM-DD.md
+档/                  滚动档（月/年统计派生）
 余页/                自由写作区（不注入、不日常检索、只受配额）
 余页/待定/YYYY-MM-DD.md   五育闸门未通过的记忆（月/年检复检对象）
-快照/                每日快照（保留 7 份）
+元/                  卷索引、迁移报告、配额与配置（模型不可写）
+<root 同级>/cyrene-philia093-0-snapshots/   每日快照（保留 7 份，不占根目录配额）
 ```
 
 - 格式版本：**1**。日档与一页永恒 0.5.x 兼容：每条记忆由正文 + 单行 HTML 注释 `<!--cyrene:{...}-->` 承载 JSON 元数据。
-- 写入：`@deepseek-ai/dsh-atomic-write`（或等价 tmp+rename）原子替换；读-改-写走 `withFileLock` 或进程内串行；文件权限 0600。
+- 链接编码：`links` 是字符串数组，元素为 `"<目标 id>|<类型>"`（类型：因果/相似/对立/时序/归属/推断，可空）。
+- 五育扩展字段（均为**可选**，缺省不写入，保证旧条目逐字兼容）：
+  `consequence{self,other,relation,world,future}`、`entropy{reduces,resonances[]}`、`legacy`、`aim`、
+  `nature{name,tier:high|low,serves_aim}`、`base`、`vol`、`gate:day|pending|promoted|imported`、
+  `promoted_at`、`source_ref`。
+- 写入：原子替换（tmp+rename；优先复用 `@deepseek-ai/dsh-atomic-write`，不可解析时用 `memory/store.js` 内置实现）；读-改-写走锁或进程内串行；文件权限 0600。
 - `元/` 不对模型开放；`base: true` 条目只能由人修改（工具层直接拒绝）。
 - 配额默认：全目录 128 MB，余页 64 MB；单条正文 ≤ 400 字；单条注入文本 ≤ 1200 字。
 
