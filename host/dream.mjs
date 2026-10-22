@@ -314,6 +314,8 @@ export function installDream(ctx, service) {
         dreamedToday: dreamedToday(state, Date.now(), { time: cfg.dream.time, timeZone: cfg.dream.timeZone }),
         running: state.running !== null,
         schedules: Object.keys(state.schedules ?? {}).length,
+        lastSessionId: state.lastCyreneSessionId,
+        lastDreamAt: state.lastDreamAt,
       }
     },
   }

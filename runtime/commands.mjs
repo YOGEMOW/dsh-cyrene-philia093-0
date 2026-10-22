@@ -131,6 +131,7 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
     maintenance === undefined
       ? '- 维护：未安装'
       : `- 维护：每 ${cfg.backup?.intervalMinutes ?? 30} 分钟 ｜ 快照 ${cfg.backup?.enabled === true} ｜ 思源 ${maintenance.siyuan?.enabled === true}${maintenance.lastMirrorError ? `（上次失败：${maintenance.lastMirrorError}）` : ''}`,
+    '- 手动：/cyrene sync（立即同步思源）｜/cyrene backup（立即备份）｜/dream（立即整理）｜设置 → 一页永恒',
   ]
   return lines.join('\n')
 }
@@ -167,12 +168,30 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
   return [
     {
       name: 'cyrene',
-      description: 'cyrene doctor：诊断记忆/轨道/漂移/夜梦/维护状态',
-      input: { hint: '(doctor)' },
-      handler: (invocation) => {
+      description: 'cyrene doctor｜sync｜backup：诊断、立即同步思源、立即备份',
+      input: { hint: '(doctor|sync|backup)' },
+      handler: async (invocation) => {
         const sub = String(invocation?.rawInput ?? '').trim().toLowerCase()
-        if (sub !== '' && sub !== 'doctor') return { kind: 'error', text: '用法：/cyrene doctor' }
-        return { kind: 'success', text: doctorText({ ctx: scope, service, agent: invocation?.agent, pluginVersion }) }
+        if (sub === '' || sub === 'doctor') {
+          return { kind: 'success', text: doctorText({ ctx: scope, service, agent: invocation?.agent, pluginVersion }) }
+        }
+        if (sub === 'sync') {
+          const run = service?.maintenance?.syncNow
+          if (typeof run !== 'function') return { kind: 'error', text: '维护未安装（config.backup.enabled != true）。' }
+          const result = await run()
+          return result.ok === true
+            ? { kind: 'success', text: `已同步到思源（条目 ${result.entries ?? 0}）。` }
+            : { kind: 'error', text: `同步失败：${result.error ?? '未知原因'}` }
+        }
+        if (sub === 'backup') {
+          const run = service?.maintenance?.backupNow
+          if (typeof run !== 'function') return { kind: 'error', text: '维护未安装（config.backup.enabled != true）。' }
+          const result = run()
+          return result.ok === true
+            ? { kind: 'success', text: `已备份：${result.path ?? ''}${result.skipped === true ? '（已存在，跳过）' : ''}` }
+            : { kind: 'error', text: `备份失败：${result.error ?? '未知原因'}` }
+        }
+        return { kind: 'error', text: '用法：/cyrene doctor｜/cyrene sync｜/cyrene backup' }
       },
     },
     {

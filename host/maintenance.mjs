@@ -48,7 +48,7 @@ export function installMaintenance(ctx, service, rawSiyuan) {
   const root = service?.root
   const cfg = service?.config
   if (typeof root !== 'string' || root === '') return () => {}
-  const siyuan = resolveSiYuanConfig(rawSiyuan)
+  const siyuan = resolveSiYuanConfig(service?.config?.siyuan ?? rawSiyuan)
   const disposers = []
   const metaLog = (file, line) => {
     try {
@@ -104,20 +104,22 @@ export function installMaintenance(ctx, service, rawSiyuan) {
     }
   }
 
-  /** 每日快照 + 骨架维护。 */
-  const runBackup = () => {
+  /** 每日快照 + 骨架维护；force=true 时忽略时点与"今天已备"限制（面板/命令手动触发）。 */
+  const runBackup = (options = {}) => {
     if (cfg?.backup?.enabled !== true) return { ok: true, skipped: true }
+    const force = options.force === true
     try {
       const hour = new Date().getHours()
       const state = loadDreamState(root)
       const today = dayOf()
-      if (hour >= (cfg.backup.snapshotHour ?? 3) && state.lastSnapshotDate !== today) {
-        const snap = snapshotRoot(root, { keep: cfg.backup.keep ?? 7 })
+      const due = force === true || (hour >= (cfg.backup.snapshotHour ?? 3) && state.lastSnapshotDate !== today)
+      if (due) {
+        const snap = snapshotRoot(root, { keep: cfg.backup.keep ?? 7, force })
         if (snap.ok === true) {
           state.lastSnapshotDate = today
           saveDreamState(root, state)
-          metaLog('维护.log', `snapshot ok path=${snap.path} skipped=${snap.skipped === true}`)
-          return { ok: true, path: snap.path }
+          metaLog('维护.log', `snapshot ok path=${snap.path} skipped=${snap.skipped === true} force=${force}`)
+          return { ok: true, path: snap.path, skipped: snap.skipped === true }
         }
         metaLog('维护.log', `snapshot failed ${snap.error}`)
         return { ok: false, error: snap.error }
@@ -127,6 +129,20 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       metaLog('维护.log', `snapshot error ${error instanceof Error ? error.message : String(error)}`)
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
+  }
+
+  /** 手动立即同步思源（面板/命令用）。 */
+  const syncNow = async () => {
+    const result = await runMirror()
+    metaLog('维护.log', `manual sync ok=${result.ok === true}${result.error ? ` ${result.error}` : ''}`)
+    return result
+  }
+
+  /** 手动立即快照。 */
+  const backupNow = () => {
+    const result = runBackup({ force: true })
+    metaLog('维护.log', `manual backup ok=${result.ok === true}${result.error ? ` ${result.error}` : ''}`)
+    return result
   }
 
   /** 一起跑：镜像 + 快照 + 月度体检/滚动。 */
@@ -151,10 +167,18 @@ export function installMaintenance(ctx, service, rawSiyuan) {
     runOnce,
     runMirror,
     runBackup,
+    syncNow,
+    backupNow,
     status() {
       return {
-        siyuan: { enabled: siyuan.enabled === true, baseURL: siyuan.baseURL, notebook: siyuan.notebook },
-        backup: { enabled: cfg?.backup?.enabled === true, snapshotHour: cfg?.backup?.snapshotHour, keep: cfg?.backup?.keep },
+        siyuan: {
+          enabled: siyuan.enabled === true,
+          baseURL: siyuan.baseURL,
+          notebook: siyuan.notebook,
+          rootHPath: siyuan.rootHPath,
+          tokenEnv: siyuan.tokenEnv,
+        },
+        backup: { enabled: cfg?.backup?.enabled === true, snapshotHour: cfg?.backup?.snapshotHour, keep: cfg?.backup?.keep, intervalMinutes: cfg?.backup?.intervalMinutes },
         lastMirrorAt,
         lastMirrorError,
       }

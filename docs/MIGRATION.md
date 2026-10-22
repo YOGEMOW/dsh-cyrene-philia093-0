@@ -61,7 +61,7 @@ dsh plugin --profile desktop add link:E:/DSH-workspace/dsh-cyrene-philia093-0
 ## 4. 校验
 
 - 新建对话，模式选择器出现「昔涟聊天模式」「德谬歌工作模式」；
-- `/cyrene doctor`：persona 指纹、注入预算、记忆条目数、迁移报告、夜梦/思源状态、漂移告警；
+- `/cyrene doctor`：persona 指纹、注入预算、记忆条目数、迁移报告、夜梦/思源状态、漂移告警；`/cyrene sync` / `/cyrene backup` 可手动同步/备份；
 - 旧会话（preset id `chat` / `cyrene-work`）能恢复；
 - 抽查记忆：`/memory` 看到四问锚点与条目统计。
 
@@ -73,3 +73,4 @@ dsh plugin --profile desktop add link:E:/DSH-workspace/dsh-cyrene-philia093-0
 4. 重启。
 
 回滚不会删除新卷目录（`<DSH_HOME>/cyrene-philia093-0/`），可按需手动清理。
+

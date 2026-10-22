@@ -218,3 +218,19 @@
 
 验证：全量 **175 项测试**通过；`npm run check` 一致；YAML round-trip 通过。命令修复需重启桌面端后
 用 `/cyrene doctor` 与 `元/命令诊断.log` 复验；若日志无 `apply: commands=function`，则行未挂载。
+
+## 15. 思源同步操作与设置面板（2026-10-22 补）
+
+- 退役的一页永恒用 **Client 设置分区 + webServer 路由** 提供「立即同步/备份/整理」；新卷补回同一形态：
+  - `host/panel.mjs`：`/dsh-cyrene-philia093-0/{status,session,action}`，action =
+    `sync | backup | dream | save-config`；经 `webServer.register({kind:'prefix'})` 注册。
+  - `client.js`：`settings.section`（「昔涟 · 一页永恒」）+ `conversation.session.header.actions`
+    小徽标；面板含状态、三个按钮、思源/定时配置表单；`package.json` 增加 `dsh.client`。
+  - `memory/settings.js`：面板写 `元/settings.json`（白名单 + 深合并），宿主启动时
+    `行配置 ← settings.json` 合并后再 `resolveConfig`；保存后需重启生效。
+  - 命令：`/cyrene sync`（立即同步）、`/cyrene backup`（立即快照）；`/dream` 仍是手动夜梦。
+- 截面镜像监听从 preset 作用域改挂 `agent/created` 后的 agent ctx（瀑布按 agent scope 派发）。
+- 测试：`tests/settings.test.mjs` 2 项、`tests/panel.test.mjs` 2 项、命令 sync/backup 断言；
+  全量 **180 项**通过。
+- 注意：Token 只从环境变量读（默认 `SIYUAN_API_TOKEN`），不写进 `settings.json`；面板保存配置后
+  需重启桌面端（配置在 apply 时解析）。

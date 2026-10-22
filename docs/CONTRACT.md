@@ -75,6 +75,15 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 - 观测：每次装配的镜像/跳过清单写进 `service.diagnostics.sections`，`/cyrene doctor` 展示；
 - 配置位置：`cyrene-runtime` 行的 `config.sectionMirror`（`mode` / `maxChars` / `mirrorUnknown` / `allow`）。
 
+### 4.2 设置面板与运行期设置
+
+- Client 半 `client.js` 在设置里注册「昔涟 · 一页永恒」：状态 + 立即同步/备份/整理 + 思源/定时配置。
+- 宿主半 `host/panel.mjs` 注册前缀 `/dsh-cyrene-philia093-0`：
+  `GET /status`、`GET /session?sessionId=`、`POST /action`（`sync|backup|dream|save-config`）。
+- 配置分层：默认值 ← Loader 行配置 ← `元/settings.json`（面板写）；保存后面板提示重启，轨道在
+  `apply` 时按新配置重装。Token 只认环境变量（默认 `SIYUAN_API_TOKEN`），不写入 settings.json。
+- 命令入口：`/cyrene sync`、`/cyrene backup`；`/dream` 为手动夜梦。
+
 ## 5. 存储
 
 - 根目录：`<DSH_HOME>/cyrene-philia093-0/`（插件配置 `rootDir` 可覆盖）。

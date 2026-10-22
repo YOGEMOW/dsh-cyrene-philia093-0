@@ -14,7 +14,8 @@
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./plugin.json": "./plugin.json",
     "./dsh.plugin.json": "./dsh.plugin.json",
-    "./runtime/commands": "./runtime/commands.mjs"
+    "./runtime/commands": "./runtime/commands.mjs",
+    "./client": "./client.js"
   },
   "files": [
     "host/",
@@ -32,7 +33,8 @@
     "CHANGELOG.md",
     "AGENTS.md",
     "LICENSE",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "client.js"
   ],
   "dsh": {
     "id": "dsh-cyrene-philia093-0",
@@ -43,11 +45,18 @@
     "permissions": [],
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
     }
   },
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",
-    "harness:check": "node --check host/index.mjs && node --check host/memory-service.mjs && node --check host/drift.mjs && node --check host/dream.mjs && node --check host/maintenance.mjs && node --check runtime/index.mjs && node --check runtime/rails.mjs && node --check runtime/capability.mjs && node --check runtime/plan-bridge.mjs && node --check runtime/commands.mjs && node --check runtime/memory-rail.mjs && node --check runtime/nickname.mjs && node --check runtime/scene.mjs && node --check runtime/style.mjs && node --check runtime/worldbook/index.mjs && node --check runtime/wuyu.mjs && node --check runtime/tools.mjs && node --check runtime/review.mjs && node --check runtime/volume.mjs && node --check runtime/commands.mjs && node --check runtime/section-mirror.mjs && node --check memory/pending.mjs && node --check scripts/import.mjs && node --check scripts/build.mjs && node --check scripts/build-lib.mjs && node --check scripts/extract-legacy.mjs",
+    "harness:check": "node --check host/index.mjs && node --check host/memory-service.mjs && node --check host/drift.mjs && node --check host/dream.mjs && node --check host/maintenance.mjs && node --check host/panel.mjs && node --check runtime/index.mjs && node --check runtime/rails.mjs && node --check runtime/capability.mjs && node --check runtime/plan-bridge.mjs && node --check runtime/commands.mjs && node --check runtime/memory-rail.mjs && node --check runtime/nickname.mjs && node --check runtime/scene.mjs && node --check runtime/style.mjs && node --check runtime/worldbook/index.mjs && node --check runtime/wuyu.mjs && node --check runtime/tools.mjs && node --check runtime/review.mjs && node --check runtime/volume.mjs && node --check runtime/commands.mjs && node --check runtime/section-mirror.mjs && node --check memory/pending.mjs && node --check memory/settings.js && node --check client.js && node --check scripts/import.mjs && node --check scripts/build.mjs && node --check scripts/build-lib.mjs && node --check scripts/extract-legacy.mjs",
     "build": "node scripts/build.mjs",
     "check": "node scripts/build.mjs --check",
     "migrate": "node scripts/import.mjs",

@@ -12,10 +12,12 @@ import { fileURLToPath } from 'node:url'
 
 import { resolveConfig } from '../memory/config.js'
 import { ensureVolumePersonaHash } from '../memory/persona.js'
+import { mergeConfig, readSettings } from '../memory/settings.js'
 import { createMemoryService } from './memory-service.mjs'
 import { checkDrift } from './drift.mjs'
 import { installDream } from './dream.mjs'
 import { installMaintenance } from './maintenance.mjs'
+import { installPanel } from './panel.mjs'
 
 export const name = 'dsh-cyrene-philia093-0'
 
@@ -41,8 +43,19 @@ export const inject = []
 export function apply(ctx, rawConfig) {
   let service
   try {
-    const config = resolveConfig(rawConfig)
+    // 先按行配置解析出根目录，再读面板设置覆盖（元/settings.json），然后重新解析一次。
+    const initial = resolveConfig(rawConfig)
+    let config = initial
+    let settings = {}
+    try {
+      const probe = createMemoryService({ config: initial })
+      settings = readSettings(probe.root)
+      if (Object.keys(settings).length > 0) config = resolveConfig(mergeConfig(rawConfig, settings))
+    } catch {
+      /* 读设置失败就用行配置 */
+    }
     service = createMemoryService({ config })
+    service.diagnostics.settingsOverride = Object.keys(settings).length > 0
     const tree = service.ensure()
     if (tree?.ok !== true) {
       ctx?.logger?.warn?.(`[${name}] 记忆目录初始化不完整：${(tree?.errors ?? []).join('；') || '未知原因'}`)
@@ -78,6 +91,13 @@ export function apply(ctx, rawConfig) {
       installMaintenance(ctx, service, rawConfig?.siyuan)
     } catch (error) {
       ctx?.logger?.warn?.(`[${name}] 定时维护安装失败（已跳过）：${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    // 设置面板路由（与 client.js 配对：状态 + 立即同步/备份/整理 + 保存设置）。
+    try {
+      installPanel(ctx, service, version)
+    } catch (error) {
+      ctx?.logger?.warn?.(`[${name}] 设置面板安装失败（已跳过）：${error instanceof Error ? error.message : String(error)}`)
     }
 
     // 能力快照漂移检测：不阻断，只告警并记进 diagnostics（doctor 会展示）。

@@ -52,7 +52,7 @@ const serviceFor = (root, extra = {}) => ({
   ...extra,
 })
 
-test('注册三个命令；doctor 输出根目录/档位/待定/漂移', () => {
+test('注册三个命令；doctor 输出根目录/档位/待定/漂移', async () => {
   const { dir, root } = setup()
   try {
     writeThroughGate(root, { text: '用户喜欢先看结论', kind: 'fact', axis: '智', src_quote: '先说结论' })
@@ -65,7 +65,7 @@ test('注册三个命令；doctor 输出根目录/档位/待定/漂移', () => {
     installCommands(ctx, service, '0.1.0')
     assert.deepEqual(ctx.defs.map((d) => d.name), ['cyrene', 'memory', 'dream'])
 
-    const doctor = ctx.defs[0].handler({ rawInput: 'doctor', agent: { session: { header: {} } } })
+    const doctor = await ctx.defs[0].handler({ rawInput: 'doctor', agent: { session: { header: {} } } })
     assert.equal(doctor.kind, 'success')
     assert.match(doctor.text, /cyrene doctor/)
     assert.match(doctor.text, /sealed/)
@@ -74,7 +74,7 @@ test('注册三个命令；doctor 输出根目录/档位/待定/漂移', () => {
     assert.match(doctor.text, /截面：镜像 1 段/)
     assert.match(doctor.text, new RegExp(root.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')))
 
-    assert.equal(ctx.defs[0].handler({ rawInput: 'nope' }).kind, 'error')
+    assert.equal((await ctx.defs[0].handler({ rawInput: 'nope' })).kind, 'error')
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
@@ -114,6 +114,29 @@ test('/memory 输出锚点与统计；/dream 转发到 service.dream', async () 
   }
 })
 
+test('/cyrene sync 与 /cyrene backup 走 maintenance', async () => {
+  const { dir, root } = setup()
+  try {
+    const ctx = fakeCtx()
+    const service = serviceFor(root, {
+      maintenance: {
+        syncNow: async () => ({ ok: true, entries: 3 }),
+        backupNow: () => ({ ok: true, path: 'C:/snap/1' }),
+      },
+    })
+    installCommands(ctx, service, '0.1.0')
+    const sync = await ctx.defs[0].handler({ rawInput: 'sync' })
+    assert.equal(sync.kind, 'success')
+    assert.match(sync.text, /已同步到思源/)
+    const backup = await ctx.defs[0].handler({ rawInput: 'backup' })
+    assert.equal(backup.kind, 'success')
+    assert.match(backup.text, /已备份/)
+    assert.equal((await ctx.defs[0].handler({ rawInput: 'nope' })).kind, 'error')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('行插件 apply：直接注册到 ctx.commands，并写命令诊断日志', async () => {
   const { dir, root } = setup()
   try {
@@ -133,7 +156,7 @@ test('行插件 apply：直接注册到 ctx.commands，并写命令诊断日志'
     }
     applyCommands(ctx)
     assert.deepEqual(defs.map((def) => def.name), ['cyrene', 'memory', 'dream'])
-    const doctor = defs[0].handler({ rawInput: 'doctor', agent: { session: { header: {} } } })
+    const doctor = await defs[0].handler({ rawInput: 'doctor', agent: { session: { header: {} } } })
     assert.equal(doctor.kind, 'success')
     assert.match(doctor.text, /cyrene doctor/)
     const diag = path.join(root, '元', '命令诊断.log')

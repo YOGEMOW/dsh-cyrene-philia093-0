@@ -3,6 +3,7 @@
  *
  * 原则：配置坏掉不能让插件失效——所有异常都回落到默认值（注入链路必须 fail-open）。
  */
+import { resolveSiYuanConfig } from './siyuan.js'
 
 /** 出厂默认值（与 cordis.patch.yml 保持同义）。 */
 export const DEFAULTS = {
@@ -109,6 +110,8 @@ export function resolveConfig(raw) {
       intervalMinutes: Math.round(num(b.intervalMinutes, DEFAULTS.backup.intervalMinutes, 1, 1440)),
       snapshotHour: Math.round(num(b.snapshotHour, DEFAULTS.backup.snapshotHour, 0, 23)),
       keep: Math.round(num(b.keep, DEFAULTS.backup.keep, 1, 60))
-    }
+    },
+    /** 思源镜像（地址/笔记本/token 环境变量名；token 本身不落配置）。 */
+    siyuan: resolveSiYuanConfig(c.siyuan)
   }
 }

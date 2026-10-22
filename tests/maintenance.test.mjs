@@ -26,12 +26,13 @@ test('维护：思源关闭 + 快照强制时点 → runOnce 成功并生成快�
     const service = {
       root,
       config: resolveConfig({
+        siyuan: { enabled: false },
         backup: { enabled: true, intervalMinutes: 30, snapshotHour: 0, keep: 7 },
         dream: { enabled: false },
       }),
       diagnostics: {},
     }
-    dispose = installMaintenance(ctx, service, { enabled: false })
+    dispose = installMaintenance(ctx, service)
     assert.equal(service.maintenance.status().siyuan.enabled, false)
     const result = await service.maintenance.runOnce('test')
     assert.equal(result.mirror.skipped, true)

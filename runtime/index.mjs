@@ -66,11 +66,20 @@ export function apply(ctx, config = {}) {
     ctx.inject(['systemPrompt', 'cyreneMemory'], (scope) => {
       const service = scope.cyreneMemory
 
-      // 截面镜像：在 sealed 吞掉之前拿到全部 section，以 context 原样回注。
+      // 截面镜像：注册到每个 agent 自己的作用域——装配 waterfall 按 agent scope 派发，
+      // preset 作用域注册在实机上收不到（2026-10-22 真机：doctor 显示"未观测到装配"）。
       try {
-        installSectionMirror(scope, service, config?.sectionMirror)
+        scope.on('agent/created', (payload) => {
+          const agent = payload?.agent
+          if (agent === undefined || agent === null) return
+          try {
+            installSectionMirror(agent.ctx ?? agent, service, config?.sectionMirror)
+          } catch (error) {
+            ctx?.logger?.warn?.(`[cyrene-runtime] agent 截面镜像失败：${error instanceof Error ? error.message : String(error)}`)
+          }
+        })
       } catch (error) {
-        ctx?.logger?.warn?.(`[cyrene-runtime] 截面镜像失败：${error instanceof Error ? error.message : String(error)}`)
+        ctx?.logger?.warn?.(`[cyrene-runtime] 截面镜像监听安装失败：${error instanceof Error ? error.message : String(error)}`)
       }
 
       try {
