@@ -153,10 +153,6 @@ test('action：sync/backup/dream/save-config', async () => {
     assert.equal(toggle.code, 200)
     assert.match(toggle.body.message, /夜梦已关闭/)
 
-    const note = await call(handler, 'POST', '/action', { action: 'note', days: 1 })
-    assert.equal(note.code, 200)
-    assert.match(note.body.message, /补记完成/)
-
     const unknown = await call(handler, 'POST', '/action', { action: 'nope' })
     assert.equal(unknown.code, 400)
   } finally {

@@ -82,7 +82,7 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
   `GET /status`、`GET /session?sessionId=`、`POST /action`（`sync|backup|dream|save-config`）。
 - 配置分层：默认值 ← Loader 行配置 ← `元/settings.json`（面板写）；保存后面板提示重启，轨道在
   `apply` 时按新配置重装。Token 只认环境变量（默认 `SIYUAN_API_TOKEN`），不写入 settings.json。
-- 命令入口：`/cyrene sync`、`/cyrene backup`、`/cyrene restore`、`/cyrene note`、`/dream`。
+- 命令入口：`/cyrene sync`、`/cyrene backup`、`/cyrene restore`、`/dream`。夜梦与日档分开：不自动复制日档。
 - 写后实时同步：`session/event` 的 `tool/result` 与 `turn/end` 触发 1.5s 防抖 `flushSoon`
   （条目/锚点/梦志/余页），30 分钟 tick 仅作兜底。
 
@@ -95,7 +95,7 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
   启动时清理未登记（旧/死）会话的日程。
 - 执行：任一启用会话的标记到达即领租约；提示词带上「参与今晚统合的会话 + 最近一句」，
   **只写一篇统合梦志**（记忆本身全局共享，不按会话分文件）。
-- 写梦志工具：`memory_dream_journal`（`梦/YYYY-MM-DD.md`；重复调用追加「补记」）。
+- 写梦志工具：`memory_dream_journal`（`梦/YYYY-MM-DD.md`；重复调用由模型追加补记）。模型没写时只记「本次未产出」，不复制日档。
 
 ## 5. 存储
 

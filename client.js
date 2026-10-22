@@ -409,7 +409,6 @@ window.__ModuleLoader__.load({
             },
             busy === 'restore' ? '恢复中…' : '从思源恢复'
           ),
-          h(Btn, { disabled, onClick: () => void run('note') }, busy === 'note' ? '补记中…' : '补记梦志'),
           h(Btn, { onClick: refresh }, '刷新')
         ),
         notice.text === '' ? null : h('div', { style: bannerStyle }, notice.text),

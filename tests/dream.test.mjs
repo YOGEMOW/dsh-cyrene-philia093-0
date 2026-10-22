@@ -237,8 +237,8 @@ test('无梦志时自动摘要；非当前会话的标记被丢弃', async () =>
     assert.equal(triggered.messages.length, 2)
     ctx.handlers.get('session/event')({ id: 's-current' }, { type: 'turn/end', data: { reason: 'completed' } })
     const journal = fs.readFileSync(path.join(root, '梦', `${dayOf()}.md`), 'utf8')
-    assert.match(journal, /按日档补上/)
-    assert.match(journal, /修复了设置面板排版/)
+    assert.match(journal, /本次夜梦没有产出/)
+    assert.equal(journal.includes('修复了设置面板排版'), false)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

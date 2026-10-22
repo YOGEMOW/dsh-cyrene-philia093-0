@@ -12,7 +12,6 @@ import { join } from 'node:path'
 import { readAnchors, renderAnchorBlock } from '../memory/anchor.js'
 import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
-import { repairJournals } from '../memory/journal.js'
 import { restoreFromSiYuan } from '../memory/restore.js'
 import { quotaUsage } from '../memory/store.js'
 import { personaHash } from './volume.mjs'
@@ -133,7 +132,7 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
     maintenance === undefined
       ? '- 维护：未安装'
       : `- 维护：每 ${cfg.backup?.intervalMinutes ?? 30} 分钟 ｜ 快照 ${cfg.backup?.enabled === true} ｜ 思源 ${maintenance.siyuan?.enabled === true}${maintenance.lastMirrorError ? `（上次失败：${maintenance.lastMirrorError}）` : ''}`,
-    '- 手动：/cyrene sync（同步）｜/cyrene backup（备份）｜/cyrene restore（从思源恢复）｜/cyrene note（补记梦志）｜/dream（立即整理）',
+    '- 手动：/cyrene sync（同步）｜/cyrene backup（备份）｜/cyrene restore（从思源恢复）｜/dream（立即整理）',
   ]
   return lines.join('\n')
 }
@@ -170,8 +169,8 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
   return [
     {
       name: 'cyrene',
-      description: 'cyrene doctor｜sync｜backup｜restore｜note｜dreams｜dream on/off：诊断/同步/备份/恢复/补记/夜梦会话',
-      input: { hint: '(doctor|sync|backup|restore [force]|note [force]|dreams|dream on|dream off)' },
+      description: 'cyrene doctor｜sync｜backup｜restore｜dreams｜dream on/off：诊断/同步/备份/恢复/夜梦会话',
+      input: { hint: '(doctor|sync|backup|restore [force]|dreams|dream on|dream off)' },
       handler: async (invocation) => {
         const rawInput = String(invocation?.rawInput ?? '').trim()
         const sub = rawInput.toLowerCase()
@@ -212,14 +211,6 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: `当前会话（${sessionId.slice(0, 8)}…）夜梦已${sub === 'dream on' ? '开启' : '关闭'}；明日 23:30 ${sub === 'dream on' ? '会' : '不会'}自动整理。` }
             : { kind: 'error', text: result.error ?? '操作失败' }
         }
-        if (sub === 'note' || sub === 'note force') {
-          const report = repairJournals(service.root, { days: 7, force: sub.endsWith('force') })
-          const written = report.days.filter((item) => item.action === 'written').map((item) => item.day)
-          return {
-            kind: 'success',
-            text: `补记完成：写入 ${report.written} 天${written.length > 0 ? `（${written.join('、')}）` : '（最近 7 天没有需要补的）'}。`,
-          }
-        }
         if (sub === 'restore' || sub === 'restore force') {
           const cfg = service?.config?.siyuan
           if (cfg === undefined || cfg === null) return { kind: 'error', text: '思源配置不可用。' }
@@ -234,7 +225,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: lines.join('\n') }
             : { kind: 'error', text: lines.join('\n') }
         }
-        return { kind: 'error', text: '用法：/cyrene doctor｜sync｜backup｜restore [force]｜note [force]｜dreams｜dream on/off' }
+        return { kind: 'error', text: '用法：/cyrene doctor｜sync｜backup｜restore [force]｜dreams｜dream on/off' }
       },
     },
     {

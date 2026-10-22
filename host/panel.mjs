@@ -13,7 +13,6 @@ import { readAnchors } from '../memory/anchor.js'
 import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
 import { readVolumeState } from '../memory/persona.js'
-import { repairJournals } from '../memory/journal.js'
 import { restoreFromSiYuan } from '../memory/restore.js'
 import { readSettings, writeSettings } from '../memory/settings.js'
 import { quotaUsage } from '../memory/store.js'
@@ -247,15 +246,6 @@ export function createPanelHandler({ ctx, service, pluginVersion = '0.0.0' }) {
             message: result.ok === true
               ? `会话 ${String(body?.sessionId ?? '').slice(0, 8)}… 夜梦已${body?.enabled === true ? '开启' : '关闭'}。`
               : (result.error ?? '操作失败'),
-          })
-        }
-        if (action === 'note') {
-          const report = repairJournals(service.root, { days: Number(body?.days) || 7, force: body?.force === true })
-          const written = report.days.filter((item) => item.action === 'written').map((item) => item.day)
-          return send(res, 200, {
-            ok: true,
-            message: `补记完成：写入 ${report.written} 天${written.length > 0 ? `（${written.join('、')}）` : ''}。`,
-            report,
           })
         }
         if (action === 'restore') {

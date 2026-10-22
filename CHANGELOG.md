@@ -47,9 +47,9 @@
   设置面板逐会话勾选、`/cyrene dream on|off` 切换当前会话、`/cyrene dreams` 列清单；
   执行时只写一篇统合梦志（各会话共享记忆，提示词里带参与会话与最近一句摘要）。
   `dream.maxScheduledSessions` 默认提到 8。补回 `memory_dream_journal` 工具（此前提示词要求写梦志但没有该工具）。
-- 补记：模型没写梦志时，按当天日档生成「补记」（时间 · 五育 · 正文），不再只留一句道歉；
-  新增 `/cyrene note`、面板「补记梦志」、`scripts/repair-journals.mjs`（默认预览，`--apply` 写入）。
-  已为 2026-10-22 的空白夜梦补上当天 3 条记忆。
+- 纠正（2026-10-23）：夜梦不再自动复制日档内容——这是功能混淆，已撤销 `/cyrene note`、
+  「补记梦志」按钮与 `scripts/repair-journals.mjs`。夜梦只记录模型六阶段产出（`memory_dream_journal`）；
+  模型没写时只留「本次夜梦没有产出」说明，日档与梦志分开。2026-10-22 那份复制内容待清理。
 - 面板会话列表不再空：`agent/created` 即登记；列表同时包含活会话、登记表、旧日程与 `lastSessionId`
   的离线项（可逐项勾选开关）。
 - 思源写后实时同步：`tool/result` / `turn/end` 触发 1.5s 防抖 `flushSoon`，条目/锚点/梦志/余页

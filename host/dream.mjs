@@ -26,7 +26,6 @@ import {
   writeDreamJournal,
 } from '../memory/dream.js'
 import { loadEntries } from '../memory/entries.js'
-import { buildDayNote } from '../memory/journal.js'
 import {
   isDreamEnabled,
   loadDreamSessions,
@@ -292,13 +291,7 @@ export function installDream(ctx, service) {
 
   /** 模型没写梦志时的自动摘要（至少留下今天的条目线索，而不是一句道歉）。 */
   const fallbackJournal = () => {
-    try {
-      const note = buildDayNote(root, dayOf())
-      if (note !== null) return note
-      return '今天没有新增记忆。'
-    } catch {
-      return '（自动收尾：本次整理没有写梦志，仅记录状态。请查看 元/梦.log。）'
-    }
+    return '本次夜梦没有产出：模型没有写梦志。夜梦与日档分开记录，不自动复制日档内容。（详见 元/梦.log）'
   }
 
   /** 收尾：日档 dreamed 标记、兜底梦志、释放租约、按需快照。 */
