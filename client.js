@@ -191,6 +191,13 @@ window.__ModuleLoader__.load({
             h('button', { style: btn, disabled: busy !== '', onClick: () => void run('sync') }, busy === 'sync' ? '同步中…' : '立即同步思源'),
             h('button', { style: btn, disabled: busy !== '', onClick: () => void run('backup') }, busy === 'backup' ? '备份中…' : '立即备份'),
             h('button', { style: btn, disabled: busy !== '', onClick: () => void run('dream') }, busy === 'dream' ? '启动中…' : '立即整理'),
+            h('button', {
+              style: btn,
+              disabled: busy !== '',
+              onClick: () => {
+                if (window.confirm('从思源只补本地缺失的记忆（不覆盖已有内容），继续？')) void run('restore')
+              },
+            }, busy === 'restore' ? '恢复中…' : '从思源恢复'),
             h('button', { style: btn, onClick: refresh }, '刷新')
           ),
           notice === '' ? null : h('div', { style: { ...muted, marginTop: 8 } }, notice)

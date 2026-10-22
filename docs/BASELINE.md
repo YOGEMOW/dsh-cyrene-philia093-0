@@ -234,3 +234,17 @@
   全量 **180 项**通过。
 - 注意：Token 只从环境变量读（默认 `SIYUAN_API_TOKEN`），不写进 `settings.json`；面板保存配置后
   需重启桌面端（配置在 apply 时解析）。
+
+## 16. 思源恢复路径（2026-10-22 补）
+
+- 复用迁入的 `memory/restore.js`（`restoreFromSiYuan`：条目/锚点/梦志；missing-only，hash 去重；
+  force 才覆盖锚点/梦志），新增三个入口：
+  - `scripts/restore-siyuan.mjs`：`--dry-run`（临时副本演练）、`--force --yes`（覆盖确认闸）、
+    `--root/--base/--notebook/--token-env` 覆盖；报表 + JSON。
+  - `/cyrene restore` / `/cyrene restore force`（命令）。
+  - 设置面板「从思源恢复」按钮（action=restore，missing-only）。
+- 快照仍是最完整的第一道保险（`<DSH_HOME>/cyrene-philia093-0-snapshots/YYYY-MM-DD/`，含余页）；
+  思源只回灌条目/锚点/梦志，余页不自动回灌。
+- 手册：`docs/RECOVERY.md`（快照恢复 → 思源恢复 → 迁移备份；限制与自检）。
+- 测试：`tests/restore-cli.test.mjs` 4 项（参数/配置优先级/报表/force 闸）；
+  `tests/memory-restore.test.mjs` 继续覆盖解析与写入。全量 **184 项**通过。

@@ -38,6 +38,8 @@
   思源/定时配置；配置写入 `元/settings.json`，与行配置在启动时合并。新增 `/cyrene sync`、
   `/cyrene backup` 命令。
 - 截面镜像监听改挂到 agent 作用域（preset 作用域在实机收不到装配事件）。
+- 灾难恢复：`scripts/restore-siyuan.mjs`（`--dry-run` / `--force --yes`）、`/cyrene restore`、
+  面板「从思源恢复」；恢复条目/锚点/梦志（missing-only，hash 去重）。手册见 `docs/RECOVERY.md`。
 
 ### 验证
 

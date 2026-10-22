@@ -84,6 +84,7 @@ modes/base/{standard,cordis}.plugins.json ─┴─▶ scripts/build.mjs ─▶ 
 | [docs/CONTRACT.md](docs/CONTRACT.md) | 跨插件/跨版本硬契约（预设 id、变量、order、存储、五育闸门、新卷） |
 | [docs/BASELINE.md](docs/BASELINE.md) | 冻结的旧插件与基线数据 |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | 从旧插件迁到新卷（备份→导入→卸载→安装→校验→回滚） |
+| [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失时的恢复手册（本地快照 → 思源副本 → 迁移备份） |
 | [philosophy/wuyu.md](philosophy/wuyu.md) | 五育 canonical 文本（逐字保留） |
 
 ## 开发

@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import { readAnchors, renderAnchorBlock } from '../memory/anchor.js'
 import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
+import { restoreFromSiYuan } from '../memory/restore.js'
 import { quotaUsage } from '../memory/store.js'
 import { personaHash } from './volume.mjs'
 import { BUDGETS, ORDERS } from './rails.mjs'
@@ -168,10 +169,11 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
   return [
     {
       name: 'cyrene',
-      description: 'cyrene doctor｜sync｜backup：诊断、立即同步思源、立即备份',
-      input: { hint: '(doctor|sync|backup)' },
+      description: 'cyrene doctor｜sync｜backup｜restore：诊断、立即同步思源、立即备份、从思源恢复',
+      input: { hint: '(doctor|sync|backup|restore [force])' },
       handler: async (invocation) => {
-        const sub = String(invocation?.rawInput ?? '').trim().toLowerCase()
+        const rawInput = String(invocation?.rawInput ?? '').trim()
+        const sub = rawInput.toLowerCase()
         if (sub === '' || sub === 'doctor') {
           return { kind: 'success', text: doctorText({ ctx: scope, service, agent: invocation?.agent, pluginVersion }) }
         }
@@ -191,7 +193,21 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: `已备份：${result.path ?? ''}${result.skipped === true ? '（已存在，跳过）' : ''}` }
             : { kind: 'error', text: `备份失败：${result.error ?? '未知原因'}` }
         }
-        return { kind: 'error', text: '用法：/cyrene doctor｜/cyrene sync｜/cyrene backup' }
+        if (sub === 'restore' || sub === 'restore force') {
+          const cfg = service?.config?.siyuan
+          if (cfg === undefined || cfg === null) return { kind: 'error', text: '思源配置不可用。' }
+          const report = await restoreFromSiYuan(cfg, service.root, { force: sub.endsWith('force') })
+          const lines = [
+            `思源恢复：${report.ok === true ? '完成' : '有错误'}`,
+            `- 扫描：日档 ${report.docs?.days ?? 0}｜锚点 ${report.docs?.anchors ?? 0}｜梦志 ${report.docs?.journals ?? 0}`,
+            `- 条目新增 ${report.entries?.added ?? 0}｜跳过 ${report.entries?.skipped ?? 0}｜锚点 ${report.anchors?.restored ?? 0}｜梦志 ${report.journals?.restored ?? 0}`,
+            ...(report.errors ?? []).map((error) => `- 错误：${error}`),
+          ]
+          return report.ok === true
+            ? { kind: 'success', text: lines.join('\n') }
+            : { kind: 'error', text: lines.join('\n') }
+        }
+        return { kind: 'error', text: '用法：/cyrene doctor｜/cyrene sync｜/cyrene backup｜/cyrene restore [force]' }
       },
     },
     {

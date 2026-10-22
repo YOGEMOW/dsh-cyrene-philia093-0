@@ -12,6 +12,7 @@
 import { readAnchors } from '../memory/anchor.js'
 import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
+import { restoreFromSiYuan } from '../memory/restore.js'
 import { readSettings, writeSettings } from '../memory/settings.js'
 import { quotaUsage } from '../memory/store.js'
 
@@ -210,6 +211,16 @@ export function createPanelHandler({ ctx, service, pluginVersion = '0.0.0' }) {
           const result = writeSettings(service.root, body?.config)
           if (result.ok !== true) return send(res, 400, { ok: false, error: result.error ?? '保存失败' })
           return send(res, 200, { ok: true, message: '已保存到 元/settings.json；重启 DSH 后生效。', settings: result.settings })
+        }
+        if (action === 'restore') {
+          const cfg = service?.config?.siyuan
+          if (cfg === undefined || cfg === null) return send(res, 400, { ok: false, error: '思源配置不可用' })
+          const report = await restoreFromSiYuan(cfg, service.root, { force: body?.force === true })
+          return send(res, report.ok === true ? 200 : 500, {
+            ok: report.ok === true,
+            message: `从思源恢复：条目 +${report.entries?.added ?? 0}（跳过 ${report.entries?.skipped ?? 0}）｜锚点 ${report.anchors?.restored ?? 0}｜梦志 ${report.journals?.restored ?? 0}`,
+            report,
+          })
         }
         return send(res, 400, { ok: false, error: `未知 action：${action}` })
       }
