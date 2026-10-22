@@ -52,12 +52,16 @@ import { loadWorldbookDirectory, worldbookDirectorySignature } from './parse.mjs
 import { buildCorpus, matchWorldbook, DEFAULT_MAX_ACTIVE } from './match.mjs';
 import { assembleWorldbook } from './assemble.mjs';
 
-/** 跟其它 dsha-* 插件一样认 DSH_HOME。 */
-const HOME = process.env.DSH_HOME || join(process.env.HOME || '.', '.dsh');
-/** 配置文件；不存在就用默认值。 */
-const CONFIG_PATH = join(HOME, 'cyrene-worldbook.json');
-/** 诊断日志。踩过一次"静默失效"，所以必须有文件级可观测性。 */
-const LOG_PATH = join(HOME, 'cyrene-worldbook.log');
+/** 旧版共享位置（迁移前）；只读兼容，新数据在 <root>/元/ 下。 */
+const LEGACY_HOME = process.env.DSH_HOME || join(process.env.HOME || process.env.USERPROFILE || '.', '.dsh');
+const LEGACY_CONFIG_PATH = join(LEGACY_HOME, 'cyrene-worldbook.json');
+const LEGACY_LOG_PATH = join(LEGACY_HOME, 'cyrene-worldbook.log');
+/** 由 apply 注入的新根目录（记忆根）；空则沿用旧位置。 */
+let stateRoot = '';
+/** 行配置里的 worldbook 覆盖（优先级高于文件）。 */
+let runtimeOverrides = null;
+const configPath = () => (stateRoot !== '' ? join(stateRoot, '元', 'worldbook.json') : LEGACY_CONFIG_PATH);
+const logPath = () => (stateRoot !== '' ? join(stateRoot, '元', 'worldbook.log') : LEGACY_LOG_PATH);
 /**
  * 随包发运的世界书数据目录。
  *
@@ -81,14 +85,17 @@ const DEFAULTS = Object.freeze({
 /** 配置文件缓存时长：改配置最多 2 秒后生效，不用重启。 */
 const CONFIG_RECHECK_MS = 2_000;
 
-/** 读配置文件原文；不存在或坏了都返回 undefined（由 normalizeConfig 兜底）。 */
+/** 读配置文件原文；新位置优先，旧位置只读兼容；不存在或坏了都返回 undefined。 */
 function readConfigFile() {
-  try {
-    if (!existsSync(CONFIG_PATH)) return undefined;
-    return JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
-  } catch {
-    return undefined;
+  const candidates = [configPath(), LEGACY_CONFIG_PATH];
+  for (const file of candidates) {
+    try {
+      if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
+    } catch {
+      /* 坏文件继续试下一个 */
+    }
   }
+  return undefined;
 }
 
 /**
@@ -123,14 +130,14 @@ function currentConfig() {
   if (configState.value !== null && now - configState.at < CONFIG_RECHECK_MS) {
     return configState.value;
   }
-  configState = { at: now, value: normalizeConfig(readConfigFile()) };
+  configState = { at: now, value: normalizeConfig({ ...(readConfigFile() ?? {}), ...(runtimeOverrides ?? {}) }) };
   return configState.value;
 }
 
 /** 追加一行诊断日志；整个吞掉异常。 */
 function logLine(message) {
   try {
-    appendFileSync(LOG_PATH, `${new Date().toISOString()} ${message}\n`);
+    appendFileSync(logPath(), `${new Date().toISOString()} ${message}\n`);
   } catch {
     /* 诊断永远不该影响主流程 */
   }
@@ -212,9 +219,14 @@ export const inject = ['systemPrompt'];
 
 /**
  * 注册世界书注入。
- * @param ctx - 主机插件上下文。
+ * @param ctx - 预设作用域上下文。
+ * @param config - { root?: string, worldbook?: object }：root 指向记忆根目录，
+ *                 worldbook 为行配置覆盖（优先级高于文件）。
  */
-export function apply(ctx) {
+export function apply(ctx, rowConfig = {}) {
+  stateRoot = typeof rowConfig.root === 'string' ? rowConfig.root : '';
+  runtimeOverrides = rowConfig.worldbook && typeof rowConfig.worldbook === 'object' ? rowConfig.worldbook : null;
+  configState = { at: 0, value: null };
   let cache = { signature: null, entries: [], error: null };
 
   /**

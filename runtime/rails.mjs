@@ -26,6 +26,7 @@ export const BUDGETS = Object.freeze({
   memoryPointer: 1200,
   hitBlock: 1000,
   nickname: 64,
+  nicknameContext: 400,
   form: 200,
   style: 400,
   worldbookPermanent: 560,

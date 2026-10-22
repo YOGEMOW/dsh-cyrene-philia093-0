@@ -115,3 +115,21 @@
 - 测试：新增 `tests/wuyu.test.mjs`（4）、`tests/tools.test.mjs`（4）、`tests/review.test.mjs`（4）、
   `tests/volume.test.mjs`（1），全量 **146 项**通过。
 - 已知未做：夜梦调度与六阶段、思源镜像/快照默认开、称呼/形态/风格/世界书轨道、`/cyrene` 命令与 doctor。
+
+## 9. 第 3b 步（四条上下文轨道）实际执行结果（2026-10-22）
+
+- 称呼：`runtime/nickname.mjs`。存储改为 `<root>/元/nickname.json`；旧 `dsha-brand-rename.json` 只在
+  自家存储无值时**只读**兼容。通道：`user_nickname` 变量 + context order 120 + `set_nickname` 工具 +
+  pre-step 显式改口解析。
+- 形态/场景：`runtime/scene.mjs`（从退役插件迁入，纯内存状态）。context order 125 + `set_form` +
+  pre-step 场景切换标记。
+- 风格：`runtime/style.mjs`（迁入；状态写 `<root>/元/style.json`，自定义档 `<root>/元/style-custom.md`）。
+  context order 130 + `/style` 命令 + `agent/request` 温度；`disabledPresets` 仍含 `cyrene-work`。
+- 世界书：`runtime/worldbook/`（数据 + parse/match/assemble 已随仓库）。配置读取改为
+  `<root>/元/worldbook.json`（旧 `~/.dsh/cyrene-worldbook.json` 只读兼容），支持行配置覆盖；
+  context order 140 + pre-step 命中。
+- 模式矩阵：`modes/*.mode.mjs` 的 `cyrene-runtime` 行带 `config.rails`；聊天四轨全开，
+  工作只留世界书。构建器把 config 原样传入声明。
+- 测试：`tests/rails.test.mjs` 5 项（四条轨道 + 模式矩阵），全量 **151 项**通过；
+  PyYAML 校验 + 声明 round-trip 仍通过。
+- 已知未做（第 4b）：夜梦六阶段调度、思源镜像/每日快照默认开、`/cyrene doctor` 与命令。

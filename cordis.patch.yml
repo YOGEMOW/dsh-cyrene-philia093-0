@@ -977,6 +977,8 @@
             disabled: true
           - id: 'cyrene-runtime'
             name: 'dsh-cyrene-philia093-0/runtime'
+            config:
+              rails: {nickname: true, style: true, scene: true, worldbook: true}
 
 - insert:
     - id: 'preset-cyrene-work'
@@ -1764,3 +1766,5 @@
             disabled: !!js "!ctx.get('profileContext')"
           - id: 'cyrene-runtime'
             name: 'dsh-cyrene-philia093-0/runtime'
+            config:
+              rails: {nickname: false, style: false, scene: false, worldbook: true}

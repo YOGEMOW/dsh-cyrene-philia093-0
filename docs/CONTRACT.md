@@ -23,7 +23,9 @@
 - Loader 行 id：`preset-cyrene-chat`、`preset-cyrene-work`（与退役插件的 `preset-chat` / `preset-cyrene-work` 不冲突，但 preset id 冲突，故必须先卸载旧插件）。
 - persona 行：`id: persona`，`config.complete: true`，`config.includeRuntimeContext: true`。
 - 昔涟运行时行：
-  - `cyrene-runtime`（顶层，`dsh-cyrene-philia093-0/runtime`）：记忆轨道 + 能力总则；
+  - `cyrene-runtime`（顶层，`dsh-cyrene-philia093-0/runtime`）：记忆轨道 + 能力总则 +
+    称呼/形态/风格/世界书四条上下文轨道 + `memory_*` 工具。其 `config.rails` 控制挂载：
+    聊天 = `{nickname:true,style:true,scene:true,worldbook:true}`；工作 = `{worldbook:true}`；
   - `cyrene-plan-bridge`（**必须**在 `planning` 隔离组内，与 `plan-mode` 同 realm）：
     `dsh-cyrene-philia093-0/runtime/plan-bridge`。
 - 宿主行提供 `cyreneMemory` 服务；运行时缺失该服务时 fail-open（不注入、不报错）。

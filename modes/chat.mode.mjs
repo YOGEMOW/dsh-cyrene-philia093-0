@@ -18,7 +18,13 @@ export default {
   base: 'standard',
   persona: 'persona/chat.md',
   tail: [
-    { id: 'cyrene-runtime', name: 'dsh-cyrene-philia093-0/runtime' },
+    {
+      id: 'cyrene-runtime',
+      name: 'dsh-cyrene-philia093-0/runtime',
+      config: {
+        rails: { nickname: true, style: true, scene: true, worldbook: true },
+      },
+    },
   ],
   groupPatches: {
     planning: [

@@ -20,7 +20,13 @@ export default {
   base: 'cordis',
   persona: 'persona/work.md',
   tail: [
-    { id: 'cyrene-runtime', name: 'dsh-cyrene-philia093-0/runtime' },
+    {
+      id: 'cyrene-runtime',
+      name: 'dsh-cyrene-philia093-0/runtime',
+      config: {
+        rails: { nickname: false, style: false, scene: false, worldbook: true },
+      },
+    },
   ],
   groupPatches: {
     planning: [
