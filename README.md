@@ -34,10 +34,10 @@
   每日快照、月度体检、月年滚动）默认开、全部 fail-open。
 - 第 5 步：能力快照漂移治理——`host/drift.mjs` 用 `agentPresets.readDocument` 读取运行时
   内置预设，与 `modes/base/*.json` 行 id 对比；缺行/多行只告警并写进
-  `service.diagnostics.drift`；构建测试新增「cyrene 模块不得注册 prompt section」。
+  `service.diagnostics.drift`；构建测试新增「cyrene 模块不得注册 prompt section」；`runtime/section-mirror.mjs` 在 `system-prompt/assemble`（complete 恢复之前）拿全量 section，把会被 sealed 吞掉的 `tool:*`/`plan:*`/未知段以 context 原样回注（`deployment:*` 与人设正文永不镜像），doctor 展示镜像/跳过清单。
 - 第 6 步：`/cyrene doctor`、`/memory`、`/dream` 命令；迁移演练测试（合成数据，源数据不动）；
   GitHub Actions Windows + Linux 矩阵；CHANGELOG 与版本一致性测试。
-  全量 **167 项测试通过**。
+  全量 **172 项测试通过**。
 
 | 步 | 内容 | 状态 |
 |---|---|---|

@@ -21,7 +21,9 @@
   + `remember/forget`；preset 作用域，标准模式不可见。
 - **夜梦与维护默认开**：23:30 六阶段整理；30 分钟维护 tick（思源镜像、每日快照、月度体检、月年滚动）；
   全部 fail-open。
-- **治理**：`/cyrene doctor`、`/memory`、`/dream`；`host/drift.mjs` 用
+- **截面镜像（sealed 语义兜底）**：监听 `system-prompt/assemble`（在 complete 恢复之前拿到全量 section），
+  把会被 sealed 吞掉的 `tool:*` / `plan:*` / 未知段以 context 原样回注；`deployment:*` 与人设正文永不镜像；
+  清单写进 `service.diagnostics.sections`，`/cyrene doctor` 展示。- **治理**：`/cyrene doctor`、`/memory`、`/dream`；`host/drift.mjs` 用
   `agentPresets.readDocument` 对比快照；`scripts/import.mjs` 幂等迁移（旧 `.md` + 一页永恒目录）。
 
 ### 验证

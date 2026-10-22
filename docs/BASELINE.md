@@ -178,3 +178,20 @@
 - 全量测试 **167 项**通过；`npm run check` 生成一致。
 - 已知边界：未在真机 profile 安装（会与旧插件 preset id 冲突，安装前必须先卸载旧插件）；
   sealed 下 DSH 未来新增的 prompt section 靠 drift + doctor 告警，不自动恢复。
+
+## 13. 截面镜像（sealed 语义兜底，2026-10-22 补）
+
+- 背景：`complete: true` 的「只留 persona」发生在 `assemble()` 的 waterfall **之后**
+  （dsh-system-prompt 0.2.1-rc.2：line 398 跑 `system-prompt/assemble`，line 403 才做 complete 恢复），
+  而 `contexts` 在 sealed 下不被过滤。因此可以在装配监听器里拿到将被吞掉的全部 section。
+- `runtime/section-mirror.mjs`：监听 `system-prompt/assemble`，`await next()` 后把 section 全文
+  合成一条 `{name:'cyrene:section-mirror', text, interpolate:false}` context 追加到尾部。
+  - `deployment:persona-prefix` / `persona-suffix` 与人设正文永不镜像；
+  - `tool:*` / `plan:*` 自动镜像；未知名字默认镜像（命中 persona/identity/system/brand 跳过）；
+  - `mode: auto|off|allowlist`、`maxChars`（默认 3000）、`mirrorUnknown` 可配；
+  - 每次装配的镜像/跳过清单写进 `service.diagnostics.sections`，`/cyrene doctor` 新增「截面」一行。
+- 配置：`modes/*.mode.mjs` 的 `cyrene-runtime` 行 `config.sectionMirror`；契约见 `docs/CONTRACT.md` §4.1。
+- 测试：`tests/section-mirror.test.mjs` 5 项（自动/关闭/白名单/预算/persona 识别）；
+  `tests/commands.test.mjs` 增加 doctor 截面断言。全量 **172 项**通过；YAML round-trip 仍通过。
+- 真机待验：装配监听器在 preset/agent scope 下是否触发（源码路径确认，但无法在沙箱安装验证）。
+  若未触发，doctor 会显示「未观测到装配」，此时退回 drift 告警 + 静态扫描。

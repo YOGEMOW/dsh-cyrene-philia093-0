@@ -81,6 +81,14 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
         .join('；')
   const dream = service?.dream?.status?.()
   const maintenance = service?.maintenance?.status?.()
+  const sections = service?.diagnostics?.sections
+  const sectionLine = (() => {
+    if (sections === null || sections === undefined) {
+      return '- 截面：未观测到装配（监听器未触发，或本进程还没有请求；镜像配置：' + (service?.config?.sectionMirror?.mode ?? 'auto') + '）'
+    }
+    const names = (sections.mirrored ?? []).map((item) => item.name).slice(0, 8).join('、') || '无'
+    return `- 截面：镜像 ${(sections.mirrored ?? []).length} 段（${names}）｜跳过 ${(sections.skipped ?? []).length} 段｜共 ${sections.totalChars ?? 0} 字${sections.truncated ? '｜已截断' : ''}`
+  })()
   const axes = axisCounts(entries)
   const lines = [
     '【cyrene doctor】',
@@ -92,6 +100,7 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
     `- 记忆：${entries.length} 条（德 ${axes.德}｜智 ${axes.智}｜体 ${axes.体}｜美 ${axes.美}｜劳 ${axes.劳}）｜待定 ${pending} 条`,
     quota === null ? '- 配额：不可读' : `- 配额：${humanBytes(quota.bytes)}（余页 ${humanBytes(quota.byTop?.['余页'] ?? 0)}）`,
     `- 漂移：${driftLine}`,
+    sectionLine,
     dream === undefined
       ? '- 夜梦：未安装（config.dream.enabled != true）'
       : `- 夜梦：${dream.time} ${dream.timeZone} ｜ 今日已整理 ${dream.dreamedToday === true} ｜ 运行中 ${dream.running === true} ｜ 任务 ${dream.schedules}`,

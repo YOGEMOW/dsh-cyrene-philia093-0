@@ -45,7 +45,10 @@ function fakeCtx() {
 const serviceFor = (root, extra = {}) => ({
   root,
   config: resolveConfig({}),
-  diagnostics: { drift: { ok: true, presets: [] } },
+  diagnostics: {
+    drift: { ok: true, presets: [] },
+    sections: { at: 1, mode: 'auto', seen: 6, mirrored: [{ name: 'tool:read', chars: 40 }], skipped: [], truncated: false, totalChars: 120 },
+  },
   ...extra,
 })
 
@@ -68,6 +71,7 @@ test('注册三个命令；doctor 输出根目录/档位/待定/漂移', () => {
     assert.match(doctor.text, /sealed/)
     assert.match(doctor.text, /待定 1 条/)
     assert.match(doctor.text, /无漂移/)
+    assert.match(doctor.text, /截面：镜像 1 段/)
     assert.match(doctor.text, new RegExp(root.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')))
 
     assert.equal(ctx.defs[0].handler({ rawInput: 'nope' }).kind, 'error')

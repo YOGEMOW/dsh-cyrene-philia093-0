@@ -21,6 +21,7 @@ import { join } from 'node:path'
 import { installCapability } from './capability.mjs'
 import { installCommands } from './commands.mjs'
 import { installMemoryRail } from './memory-rail.mjs'
+import { installSectionMirror } from './section-mirror.mjs'
 import { installNickname } from './nickname.mjs'
 import { registerMemoryTools } from './tools.mjs'
 import { apply as applyScene } from './scene.mjs'
@@ -65,6 +66,13 @@ export function apply(ctx, config = {}) {
   try {
     ctx.inject(['systemPrompt', 'cyreneMemory'], (scope) => {
       const service = scope.cyreneMemory
+
+      // 截面镜像：在 sealed 吞掉之前拿到全部 section，以 context 原样回注。
+      try {
+        installSectionMirror(scope, service, config?.sectionMirror)
+      } catch (error) {
+        ctx?.logger?.warn?.(`[cyrene-runtime] 截面镜像失败：${error instanceof Error ? error.message : String(error)}`)
+      }
 
       try {
         installMemoryRail(scope, service)

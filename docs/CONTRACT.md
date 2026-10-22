@@ -62,6 +62,16 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 - 总预算：所有 cyrene 注入合计 ≤ 4000 字；超限从低优先级轨道开始裁剪，并在诊断里记录。
 - sealed 下 `systemPrompt.section` 全部无效；**任何需要模型看到的能力说明都必须走 `context` / `variable` / `pre-step` 三条通道之一**。
 
+### 4.1 截面镜像（sealed 的语义兜底）
+
+- `runtime/section-mirror.mjs` 监听 `system-prompt/assemble`（该 waterfall 在 complete 恢复**之前**运行），
+  拿到全量 section 正文，把会被 sealed 吞掉的段以**未注册 context**（`interpolate: false`）回注到上下文尾部；
+- 名字策略：`deployment:*` 与人设正文**永不镜像**；`tool:*` / `plan:*` 自动镜像；
+  未知名字默认镜像（命中 persona/identity/system/brand 的跳过）；`mode = auto | off | allowlist`；
+- 预算：默认 ≤ 3000 字（单段 ≤ 1200 字，超出截断）；不占用 100–199 的 context order 区间；
+- 观测：每次装配的镜像/跳过清单写进 `service.diagnostics.sections`，`/cyrene doctor` 展示；
+- 配置位置：`cyrene-runtime` 行的 `config.sectionMirror`（`mode` / `maxChars` / `mirrorUnknown` / `allow`）。
+
 ## 5. 存储
 
 - 根目录：`<DSH_HOME>/cyrene-philia093-0/`（插件配置 `rootDir` 可覆盖）。

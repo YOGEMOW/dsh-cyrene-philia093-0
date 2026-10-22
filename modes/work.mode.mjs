@@ -25,6 +25,7 @@ export default {
       name: 'dsh-cyrene-philia093-0/runtime',
       config: {
         rails: { nickname: false, style: false, scene: false, worldbook: true },
+        sectionMirror: { mode: 'auto', maxChars: 3000, mirrorUnknown: true },
       },
     },
   ],
