@@ -97,3 +97,21 @@
 - 测试：新增 `tests/runtime.test.mjs` 5 项（能力总则、计划桥、记忆轨道快照/去重/压缩重注入、注入开关、宿主服务），
   全量 133 项通过。
 - 已知未做（第 3b）：称呼/形态/风格/世界书轨道、memory_* 工具与五育闸门；夜梦/思源在第 4/6 步。
+
+## 8. 第 4 步实际执行结果（2026-10-22）
+
+- 五育闸门：`runtime/wuyu.mjs`。硬规则——text 必填、axis 必填、必须有溯源（`src_quote` 或 `src_ids`）、
+  `decision` 类必须有多尺度后果、`base:true` 直接拒绝。通过 → 日档（`gate:day`）；
+  不通过 → `余页/待定/YYYY-MM-DD.md`（`gate:pending`），返回「还差什么」。
+- 待定区：`memory/pending.mjs`（同格式日档、原子写、按日读写、幂等、可移除）。
+- 工具：`runtime/tools.mjs`，preset 作用域注册
+  `memory_write/search/read/recall/update/forget/link/anchor/fs/pending/promote` + `remember/forget`；
+  全部走闸门或只读。
+- 复检与提升：`runtime/review.mjs`。`promotePending` 补齐后重新过闸 → 日档（`gate:promoted`、`source_ref`）；
+  `runMonthlyReview` 复用引擎 `monthlyAudit`（写年轮、幂等）+ `rollCalendars` + 本插件五育统计
+  （无源率、孤岛率、握命推进、天性高低级比）；`runYearlyReview` 给全年与待定清单。
+- 新卷：`runtime/volume.mjs`。`元/卷.json` 只增不改；开卷时把 `persona/chat.md`、`persona/work.md`、
+  `philosophy/wuyu.md` 快照进 `元/卷/<id>/persona/` 并记录 sha256 指纹；**只由人调用，不暴露成工具**。
+- 测试：新增 `tests/wuyu.test.mjs`（4）、`tests/tools.test.mjs`（4）、`tests/review.test.mjs`（4）、
+  `tests/volume.test.mjs`（1），全量 **146 项**通过。
+- 已知未做：夜梦调度与六阶段、思源镜像/快照默认开、称呼/形态/风格/世界书轨道、`/cyrene` 命令与 doctor。
