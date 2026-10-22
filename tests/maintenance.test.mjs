@@ -34,7 +34,9 @@ test('维护：思源关闭 + 快照强制时点 → runOnce 成功并生成快�
     }
     dispose = installMaintenance(ctx, service)
     assert.equal(service.maintenance.status().siyuan.enabled, false)
+    const flushed = await service.maintenance.flushSoon()
     const result = await service.maintenance.runOnce('test')
+    assert.equal(flushed.skipped, true)
     assert.equal(result.mirror.skipped, true)
     assert.equal(result.backup.ok, true)
     const snapshots = path.join(path.dirname(root), 'cyrene-philia093-0-snapshots')

@@ -163,12 +163,50 @@ export function installMaintenance(ctx, service, rawSiyuan) {
     return { mirror, backup, monthly, rolling }
   }
 
+  /** 写后实时同步：防抖合并，最多等 `debounceMs`（默认 1500ms）。 */
+  let flushTimer = null
+  let flushPending = null
+  const flushSoon = (reason = 'write') => {
+    if (siyuan.enabled !== true) return Promise.resolve({ ok: true, skipped: true })
+    if (flushPending !== null) return flushPending
+    const debounceMs = Math.max(200, Number(cfg?.backup?.mirrorDebounceMs) || 1500)
+    flushPending = new Promise((resolve) => {
+      flushTimer = setTimeout(async () => {
+        flushTimer = null
+        try {
+          const result = await runMirror()
+          logMirror(root, `debounced flush(${reason}) ok=${result.ok === true} entries=${result.entries ?? 0}`)
+          resolve(result)
+        } catch (error) {
+          resolve({ ok: false, error: error instanceof Error ? error.message : String(error) })
+        } finally {
+          flushPending = null
+        }
+      }, debounceMs)
+      flushTimer.unref?.()
+    })
+    return flushPending
+  }
+
+  // 回合结束 / 工具结果后立即触发一次防抖同步（记忆/梦志/锚点写入后就能到思源）。
+  if (typeof ctx?.on === 'function') {
+    const off = ctx.on('session/event', (_session, event) => {
+      try {
+        if (event?.type === 'turn/end' || event?.type === 'tool/result') void flushSoon(event.type)
+      } catch {
+        /* ignore */
+      }
+    })
+    if (typeof off === 'function') disposers.push(off)
+  }
+
   service.maintenance = {
     runOnce,
     runMirror,
     runBackup,
     syncNow,
     backupNow,
+    flushSoon,
     status() {
       return {
         siyuan: {

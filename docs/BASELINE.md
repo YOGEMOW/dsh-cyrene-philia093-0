@@ -294,3 +294,16 @@
   - 工具：`runtime/tools.mjs` 补回 `memory_dream_journal`（写 `梦/YYYY-MM-DD.md`，重复追加补记）。
 - 测试：`tests/dream-sessions.test.mjs` 2 项、`tests/tools.test.mjs` 梦境工具 1 项、面板 dream-session 路由断言；
   全量 **190 项**通过。
+## 20. 面板会话列表为空 + 写后实时同步（2026-10-23）
+
+- 现象：设置页「夜梦会话」显示"还没有登记过昔涟会话"，但任务数 1。
+- 原因：登记表 `元/梦会话.json` 是懒创建，只有昔涟会话的 pre-step 才会写；面板当时只看
+  "活会话 + 登记表"，所以空。旧日程/lastSessionId 虽有数据但没展示。
+- 修复：
+  - `agent/created` 会话一打开就登记（不必先说话）；启动时给活会话登记；
+  - 面板列表合并：活会话 + 登记表 + `梦.json` 里的旧日程 + `lastCyreneSessionId`（离线项可勾选）；
+  - 关闭夜梦会删除对应日程，开启会立即补建。
+- 写后实时同步：`host/maintenance.mjs` 新增 `flushSoon`——监听 `session/event` 的
+  `tool/result` / `turn/end`，1.5 秒防抖后执行 `runMirror`（条目/锚点/梦志/余页），
+  30 分钟 tick 保留作兜底。`/cyrene sync` 与面板按钮仍可立即同步。
+- 测试：全量 **190 项**通过。

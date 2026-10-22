@@ -367,6 +367,23 @@ export function installDream(ctx, service) {
   })
   if (typeof preStep === 'function') disposers.push(preStep)
 
+  // 会话一打开就登记（不必等用户先说话），这样面板里能看到所有活着的昔涟会话。
+  const onAgentCreated = ctx.on('agent/created', (payload) => {
+    try {
+      const agent = payload?.agent
+      if (agent === undefined || allowed(agent) !== true) return
+      const sessionId = String(agent?.session?.id ?? agent?.id ?? '')
+      if (sessionId === '') return
+      touchDreamSession(root, sessionId, { preset: presetOf(agent) })
+      state.lastCyreneSessionId = sessionId
+      saveDreamState(root, state)
+      if (isDreamEnabled(loadDreamSessions(root), sessionId)) void ensureSchedule(sessionId)
+    } catch {
+      /* ignore */
+    }
+  })
+  if (typeof onAgentCreated === 'function') disposers.push(onAgentCreated)
+
   // 轮次结束收尾。
   const onEvent = (session, event) => {
     try {
@@ -411,14 +428,20 @@ export function installDream(ctx, service) {
     const enrolled = loadDreamSessions(root)
     const live = liveCyreneAgents()
     const liveIds = new Set(live.map((agent) => String(agent?.id ?? agent?.session?.id ?? '')))
-    const ids = new Set([...liveIds, ...Object.keys(enrolled.sessions ?? {})])
+    // 除了活会话/登记表，也把旧日程与最近会话带出来，避免面板一开始是空的。
+    const ids = new Set([
+      ...liveIds,
+      ...Object.keys(enrolled.sessions ?? {}),
+      ...Object.keys(state.schedules ?? {}),
+      ...(state.lastCyreneSessionId !== '' ? [state.lastCyreneSessionId] : []),
+    ])
     return [...ids].filter((sid) => sid !== '').map((sid) => {
       const entry = enrolled.sessions[sid] ?? {}
       return {
         id: sid,
         shortId: sid.length > 8 ? `${sid.slice(0, 8)}…` : sid,
         live: liveIds.has(sid),
-        enabled: isDreamEnabled(enrolled, sid) && (entry.enabled !== undefined || liveIds.has(sid)),
+        enabled: isDreamEnabled(enrolled, sid),
         scheduled: state.schedules?.[sid] !== undefined,
         lastActiveAt: Number(entry.lastActiveAt ?? entry.createdAt ?? 0),
         lastUserText: typeof entry.lastUserText === 'string' ? entry.lastUserText : '',
@@ -461,12 +484,13 @@ export function installDream(ctx, service) {
   }
 
   logMeta('梦.log', `dream installed time=${cfg.dream.time} tz=${cfg.dream.timeZone}`)
-  // 启动时：给所有已登记且启用的活会话各挂一条日程，其余全清。
+  // 启动时：把活着的昔涟会话登记，给启用的各挂一条日程，其余清掉。
   void (async () => {
     for (const agent of liveCyreneAgents()) {
       const sid = String(agent?.id ?? agent?.session?.id ?? '')
       if (sid === '') continue
-      if (dreamEnrolled(sid)) await ensureSchedule(sid)
+      touchDreamSession(root, sid, { preset: presetOf(agent) })
+      if (isDreamEnabled(loadDreamSessions(root), sid)) await ensureSchedule(sid)
       else await removeSchedule(sid)
     }
     await pruneSchedules(desiredScheduleIds())

@@ -26,10 +26,21 @@ function fakeCtx({ preset = 'chat', schedule = true } = {}) {
   const handlers = new Map()
   const created = []
   const scheduleService = schedule === false ? undefined : {
-    async list() {
-      return []
+    async list({ sessionId }) {
+      return created
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.sessionId === sessionId)
+        .map(({ item, index }) => ({
+          id: `task-${index + 1}`,
+          title: item.task.title,
+          kind: 'daily',
+          time: item.task.daily?.time,
+          timeZone: item.task.daily?.time_zone,
+        }))
     },
-    async delete() {
+    async delete({ sessionId, id }) {
+      const index = Number(String(id).replace('task-', '')) - 1
+      if (Number.isFinite(index) && created[index]?.sessionId === sessionId) created.splice(index, 1)
       return true
     },
     async update() {
