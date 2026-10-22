@@ -1,0 +1,81 @@
+{
+  "_comment": "第 0 步基线：冻结的旧插件版本与预设行集。供等价性/回归测试使用，不读取真实用户数据。",
+  "frozenAt": "2026-10-22",
+  "plugins": {
+    "dsh-cyrene": {
+      "version": "0.6.3",
+      "commit": "e0b131c",
+      "path": "E:/Git/repositoris/DSH-Cyrene"
+    },
+    "dsh-cyrene-eternal-page-remembrance": {
+      "version": "0.5.4",
+      "commit": "fa17615",
+      "path": "E:/DSH-workspace/cyrene-eternal-page-remembrance"
+    }
+  },
+  "presets": {
+    "chat": {
+      "personaComplete": true,
+      "topLevelRows": [
+        "persona",
+        "tool-web",
+        "cyrene-nickname",
+        "cyrene-memory",
+        "dsh-cyrene-worldbook",
+        "cyrene-style",
+        "cyrene-scene"
+      ],
+      "flatCount": 7
+    },
+    "cyrene-work": {
+      "personaComplete": true,
+      "topLevelRows": [
+        "persona",
+        "agent-instructions",
+        "time-context",
+        "tool-bash",
+        "tool-pwsh",
+        "tool-fs",
+        "tool-fs-search",
+        "tool-jobs",
+        "tool-schedule",
+        "skill-filesystem",
+        "tool-skill",
+        "command-goal",
+        "tool-goal",
+        "planning",
+        "compaction",
+        "delegation",
+        "tool-ask-user",
+        "tool-todo",
+        "tool-web",
+        "present",
+        "tool-plugin-manager",
+        "tool-plugin-market",
+        "cyrene-memory",
+        "dsh-cyrene-worldbook"
+      ],
+      "flatCount": 34
+    }
+  },
+  "builtinPresets": {
+    "dshVersion": "0.2.1-rc.2",
+    "standard": { "flatCount": 32 },
+    "cordis": { "flatCount": 33 },
+    "cordisDeltaFromStandard": [
+      "row: tool-cordis",
+      "row: skill-filesystem + config.customSkillDirs (agent-preset skills)",
+      "row: tool-plugin-manager disabled = !!js \"!ctx.get('profileContext')\"",
+      "row: tool-plugin-market disabled = !!js \"!ctx.get('profileContext')\""
+    ]
+  },
+  "knownSectionProducers": [
+    "@deepseek-ai/dsh-plan-mode",
+    "@deepseek-ai/dsh-tool-bash",
+    "@deepseek-ai/dsh-tool-pwsh",
+    "@deepseek-ai/dsh-tool-fs",
+    "@deepseek-ai/dsh-tool-goal",
+    "@deepseek-ai/dsh-tool-subagent",
+    "@deepseek-ai/dsh-tool-web"
+  ]
+}

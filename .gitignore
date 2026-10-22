@@ -1,0 +1,11 @@
+# 本仓库是纯 Bundle 插件：无第三方 npm 依赖，无需 `npm install`。
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+
+# 本地检索/备份/临时产物
+*.bak-*
+*.log
+.DS_Store
+Thumbs.db
+_tmp/
