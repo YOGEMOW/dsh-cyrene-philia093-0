@@ -22,6 +22,11 @@
 - `id` **永不变**：会话日志按 preset id 恢复；改名等于让所有旧会话无法恢复。
 - Loader 行 id：`preset-cyrene-chat`、`preset-cyrene-work`（与退役插件的 `preset-chat` / `preset-cyrene-work` 不冲突，但 preset id 冲突，故必须先卸载旧插件）。
 - persona 行：`id: persona`，`config.complete: true`，`config.includeRuntimeContext: true`。
+- 昔涟运行时行：
+  - `cyrene-runtime`（顶层，`dsh-cyrene-philia093-0/runtime`）：记忆轨道 + 能力总则；
+  - `cyrene-plan-bridge`（**必须**在 `planning` 隔离组内，与 `plan-mode` 同 realm）：
+    `dsh-cyrene-philia093-0/runtime/plan-bridge`。
+- 宿主行提供 `cyreneMemory` 服务；运行时缺失该服务时 fail-open（不注入、不报错）。
 - 两个预设都是 **sealed**：系统提示词只有 persona 前缀一段。能力通过工具、变量、`context`、pre-step 消息恢复，见第 4 节。
 
 ## 3. 变量所有权

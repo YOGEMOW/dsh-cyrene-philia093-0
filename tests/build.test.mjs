@@ -58,12 +58,17 @@ test('sealed：两个预设的 persona 都是 complete:true、includeRuntimeCont
   }
 })
 
-test('能力行：与内置快照逐字段一致（只替换 persona）', async () => {
+test('能力行：与内置快照逐字段一致（只替换 persona，尾部追加昔涟行）', async () => {
   const modes = await loadModes()
   for (const mode of modes) {
     const snapshot = JSON.parse(read(`modes/base/${mode.base}.plugins.json`))
     const decl = buildDeclaration(mode)
-    assert.equal(decl.config.plugins.length, snapshot.plugins.length, `${mode.id} 行数应与内置快照一致`)
+    const tailCount = (mode.tail ?? []).length
+    assert.equal(
+      decl.config.plugins.length,
+      snapshot.plugins.length + tailCount,
+      `${mode.id} 行数 = 内置快照 + tail`,
+    )
     for (let i = 0; i < snapshot.plugins.length; i += 1) {
       const expected = structuredClone(snapshot.plugins[i])
       const actual = structuredClone(decl.config.plugins[i])
@@ -73,8 +78,27 @@ test('能力行：与内置快照逐字段一致（只替换 persona）', async 
         assert.equal(actual.name, expected.name)
         continue
       }
+      if (expected.id === 'planning') {
+        // planning 组被追加了计划桥：先比对原有子行，再看追加行。
+        assert.deepEqual(actual.isolate, expected.isolate)
+        const baseChildren = expected.config
+        for (let j = 0; j < baseChildren.length; j += 1) {
+          assert.deepEqual(actual.config[j], baseChildren[j], `${mode.id}/planning/${baseChildren[j].id} 不一致`)
+        }
+        continue
+      }
       assert.deepEqual(actual, expected, `${mode.id}/${expected.id} 与内置快照不一致`)
     }
+    // tail 行：只允许昔涟运行时行。
+    const tail = decl.config.plugins.slice(snapshot.plugins.length)
+    assert.deepEqual(tail.map((row) => row.id), ['cyrene-runtime'])
+    // 计划桥必须在 planning 组内，且与 plan-mode 同组（隔离 realm）。
+    const planning = decl.config.plugins.find((row) => row.id === 'planning')
+    const bridge = planning.config.find((row) => row.id === 'cyrene-plan-bridge')
+    assert.ok(bridge, `${mode.id}: planning 组内必须有 cyrene-plan-bridge`)
+    assert.equal(bridge.name, 'dsh-cyrene-philia093-0/runtime/plan-bridge')
+    assert.equal(planning.config.some((row) => row.id === 'plan-mode'), true)
+    assert.equal(decl.config.plugins.some((row) => row.id === 'cyrene-plan-bridge'), false, '计划桥不能挂在顶层')
   }
 })
 

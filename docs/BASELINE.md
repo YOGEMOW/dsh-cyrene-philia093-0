@@ -82,3 +82,18 @@
 - 测试：`tests/build.test.mjs` 7 项通过（生成一致、预设元数据、sealed persona、能力行与快照一致、
   生成确定性、路径前置校验、人设逐字提取）。
 - 已知未做：`modes/*.mode.mjs` 的 `tail` 仍为空 —— 第 3 步接入 runtime 轨道与能力总则/计划桥。
+
+## 7. 第 3a 步实际执行结果（2026-10-22）
+
+- 宿主：`host/index.mjs` 读取行配置 → `resolveConfig` → `createMemoryService` → `ensureTree` →
+  `ctx.provide('cyreneMemory', service)`；服务缺失/初始化失败一律 fail-open。
+- 运行时（preset 作用域）：
+  - `runtime/rails.mjs`：注入 order 表（120–155）与预算、plugin 消息构造（`source.kind = plugin:cyrene-philia093-0`）；
+  - `runtime/capability.mjs`：context order 150 的能力总则（≤1300 字）；
+  - `runtime/plan-bridge.mjs`：独立行，插进 `planning` 隔离组，按 `ctx.planMode.get(agent).active` 出文本（order 155）；
+  - `runtime/memory-rail.mjs`：`{{cyrene_memory}}` 指针变量 + pre-step 首轮快照/命中/压缩（`compaction/end`）后重注入。
+- 构建：`modes/*.mode.mjs` 增加 `tail`（`cyrene-runtime`）与 `groupPatches.planning`（`cyrene-plan-bridge`）；
+  `cordis.patch.yml` 行数变为 chat 23 / work 24；PyYAML 校验与声明 round-trip 均通过。
+- 测试：新增 `tests/runtime.test.mjs` 5 项（能力总则、计划桥、记忆轨道快照/去重/压缩重注入、注入开关、宿主服务），
+  全量 133 项通过。
+- 已知未做（第 3b）：称呼/形态/风格/世界书轨道、memory_* 工具与五育闸门；夜梦/思源在第 4/6 步。

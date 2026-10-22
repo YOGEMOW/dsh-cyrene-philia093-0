@@ -7,6 +7,7 @@
   "exports": {
     ".": "./host/index.mjs",
     "./runtime": "./runtime/index.mjs",
+    "./runtime/plan-bridge": "./runtime/plan-bridge.mjs",
     "./memory/": "./memory/",
     "./persona/": "./persona/",
     "./philosophy/": "./philosophy/",

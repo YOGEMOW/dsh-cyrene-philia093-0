@@ -68,6 +68,16 @@ export function buildDeclaration(mode) {
     if (rows.some((r) => r?.id === row?.id)) throw new Error(`${mode.id}: tail 行 id 重复：${row?.id}`)
     rows.push(structuredClone(row))
   }
+  // 往内置预设的某个组里追加行（例：计划桥必须与 plan-mode 同处 planning 隔离组）。
+  for (const [groupId, patchRows] of Object.entries(mode.groupPatches ?? {})) {
+    const group = rows.find((row) => row?.id === groupId)
+    if (!group) throw new Error(`${mode.id}: 找不到组 ${groupId}`)
+    if (!Array.isArray(group.config)) throw new Error(`${mode.id}: ${groupId} 不是组（config 不是数组）`)
+    for (const row of patchRows) {
+      if (group.config.some((r) => r?.id === row?.id)) throw new Error(`${mode.id}/${groupId}: 组内行 id 重复：${row?.id}`)
+      group.config.push(structuredClone(row))
+    }
+  }
   return {
     loaderId: mode.loaderId,
     config: {

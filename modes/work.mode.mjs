@@ -5,7 +5,10 @@
  * persona = persona/work.md（逐字，来自退役插件）
  * 档位 = sealed
  *
- * 第 3 步起在 tail 追加：runtime 轨道、能力总则、计划桥、世界书。
+ * tail / groupPatches = 昔涟的会话级插件（第 3 步起）：
+ *   - cyrene-runtime：记忆轨道 + 能力总则；
+ *   - cyrene-plan-bridge：计划模式桥（必须在 planning 隔离组内）。
+ *
  * 风格/场景按原约定不挂工作模式（见 docs/CONTRACT.md 第 4 节与设计文档）。
  */
 export default {
@@ -16,5 +19,12 @@ export default {
   description: '昔涟（Cyrene）与你干活：sealed 人设 + 创造模式全能力（含工具/技能/插件管理）。',
   base: 'cordis',
   persona: 'persona/work.md',
-  tail: [],
+  tail: [
+    { id: 'cyrene-runtime', name: 'dsh-cyrene-philia093-0/runtime' },
+  ],
+  groupPatches: {
+    planning: [
+      { id: 'cyrene-plan-bridge', name: 'dsh-cyrene-philia093-0/runtime/plan-bridge' },
+    ],
+  },
 }

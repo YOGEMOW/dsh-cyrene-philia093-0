@@ -5,7 +5,9 @@
  * persona = persona/chat.md（逐字，来自退役插件）
  * 档位 = sealed（见 docs/CONTRACT.md 第 2 节）
  *
- * 第 3 步起在 tail 追加：runtime 轨道、能力总则、计划桥、世界书、称呼、风格、场景。
+ * tail / groupPatches = 昔涟的会话级插件（第 3 步起）：
+ *   - cyrene-runtime：记忆轨道 + 能力总则；
+ *   - cyrene-plan-bridge：计划模式桥（必须在 planning 隔离组内）。
  */
 export default {
   id: 'chat',
@@ -15,5 +17,12 @@ export default {
   description: '昔涟（Cyrene）陪聊：sealed 人设 + 标准模式全能力（能力总则与计划桥恢复规范）。',
   base: 'standard',
   persona: 'persona/chat.md',
-  tail: [],
+  tail: [
+    { id: 'cyrene-runtime', name: 'dsh-cyrene-philia093-0/runtime' },
+  ],
+  groupPatches: {
+    planning: [
+      { id: 'cyrene-plan-bridge', name: 'dsh-cyrene-philia093-0/runtime/plan-bridge' },
+    ],
+  },
 }

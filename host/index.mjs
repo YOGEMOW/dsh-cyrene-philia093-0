@@ -1,18 +1,18 @@
 /**
- * dsh-cyrene-philia093-0 / 宿主半体（第 0 步骨架）
+ * dsh-cyrene-philia093-0 / 宿主半体（第 3 步：提供记忆服务）。
  *
- * 宿主半体负责：
- *   - 记忆引擎服务（跨会话、夜梦调度、迁移、配额、诊断）
- *   - 生成漂移检测（对比内置 standard/cordis 与构建时快照）
- *   - persona 指纹与 /cyrene doctor
+ * 职责边界：
+ *   - Host：记忆根目录、配置、`cyreneMemory` 服务（跨会话、可被多个预设消费）；
+ *   - Preset（runtime）：注入轨道与工具，只对 chat / cyrene-work 生效。
  *
- * 第 0 步只提供可加载的包锚点，不注册任何服务、不写任何文件。
- * 记忆引擎在第 1 步迁入；预设声明在第 2 步由构建器生成。
+ * 第 3 步只提供 service + 建树；夜梦调度、思源镜像、备份、doctor 在第 4/6 步接入。
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-/** 插件 id（与 package.json 的 dsh.id、cordis.patch.yml 的条目 id 一致）。 */
+import { resolveConfig } from '../memory/config.js'
+import { createMemoryService } from './memory-service.mjs'
+
 export const name = 'dsh-cyrene-philia093-0'
 
 /** 版本号从 package.json 读，避免多处手写不同步。 */
@@ -26,16 +26,33 @@ export const version = (() => {
   }
 })()
 
-/** 第 0 步不注入任何宿主服务。 */
+/** 不强制依赖任何宿主服务（服务缺失也要能加载）。 */
 export const inject = []
 
 /**
- * 插件加载钩子。
- * @param ctx - 宿主插件上下文。
+ * 宿主行入口。
+ * @param ctx 宿主插件上下文
+ * @param rawConfig Loader 行配置（可为 undefined）
  */
-export function apply(ctx) {
-  ctx?.logger?.info?.(
-    `[${name}] v${version} 骨架已加载（第 0 步：仓库/契约/基线）。`
-      + '预设声明与记忆引擎将在后续步骤接入；在此之前请勿安装到 profile。'
-  )
+export function apply(ctx, rawConfig) {
+  let service
+  try {
+    const config = resolveConfig(rawConfig)
+    service = createMemoryService({ config })
+    const tree = service.ensure()
+    if (tree?.ok !== true) {
+      ctx?.logger?.warn?.(`[${name}] 记忆目录初始化不完整：${(tree?.errors ?? []).join('；') || '未知原因'}`)
+    }
+    try {
+      ctx.provide('cyreneMemory', service)
+    } catch (error) {
+      ctx?.logger?.warn?.(`[${name}] cyreneMemory 服务注册失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+    ctx?.logger?.info?.(
+      `[${name}] v${version} 记忆服务已就绪：${service.root}`
+        + `（注入预设：${JSON.stringify(service.config.injectPresets)}；余梦/镜像在第 4/6 步接入）`
+    )
+  } catch (error) {
+    ctx?.logger?.warn?.(`[${name}] 记忆服务初始化失败（已降级为无记忆）：${error instanceof Error ? error.message : String(error)}`)
+  }
 }
