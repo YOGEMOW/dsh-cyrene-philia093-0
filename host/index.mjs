@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 import { resolveConfig } from '../memory/config.js'
 import { createMemoryService } from './memory-service.mjs'
+import { checkDrift } from './drift.mjs'
 
 export const name = 'dsh-cyrene-philia093-0'
 
@@ -50,8 +51,33 @@ export function apply(ctx, rawConfig) {
     }
     ctx?.logger?.info?.(
       `[${name}] v${version} 记忆服务已就绪：${service.root}`
-        + `（注入预设：${JSON.stringify(service.config.injectPresets)}；余梦/镜像在第 4/6 步接入）`
+        + `（注入预设：${JSON.stringify(service.config.injectPresets)}；夜梦/镜像在第 4b/6 步接入）`
     )
+
+    // 能力快照漂移检测：不阻断，只告警并记进 diagnostics（doctor 会展示）。
+    try {
+      ctx.inject(['agentPresets'], (scope) => {
+        checkDrift(scope.agentPresets)
+          .then((report) => {
+            service.diagnostics.drift = report
+            if (report.ok) {
+              ctx?.logger?.info?.(`[${name}] 能力快照无漂移（standard/cordis）。`)
+            } else {
+              const detail = report.presets
+                .filter((item) => !item.ok)
+                .map((item) => `${item.base}: 缺 ${JSON.stringify(item.missing)} 多 ${JSON.stringify(item.extra)}${item.error ? ` 错误 ${item.error}` : ''}`)
+                .join('；')
+              ctx?.logger?.warn?.(`[${name}] 能力快照漂移：${detail}。请更新 modes/base 快照并 npm run build。`)
+            }
+          })
+          .catch((error) => {
+            service.diagnostics.lastError = error instanceof Error ? error.message : String(error)
+            ctx?.logger?.warn?.(`[${name}] 漂移检测失败（已忽略）：${service.diagnostics.lastError}`)
+          })
+      })
+    } catch (error) {
+      ctx?.logger?.warn?.(`[${name}] 漂移检测未安装：${error instanceof Error ? error.message : String(error)}`)
+    }
   } catch (error) {
     ctx?.logger?.warn?.(`[${name}] 记忆服务初始化失败（已降级为无记忆）：${error instanceof Error ? error.message : String(error)}`)
   }

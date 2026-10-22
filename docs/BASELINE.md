@@ -133,3 +133,17 @@
 - 测试：`tests/rails.test.mjs` 5 项（四条轨道 + 模式矩阵），全量 **151 项**通过；
   PyYAML 校验 + 声明 round-trip 仍通过。
 - 已知未做（第 4b）：夜梦六阶段调度、思源镜像/每日快照默认开、`/cyrene doctor` 与命令。
+
+## 10. 第 5 步（漂移治理）实际执行结果（2026-10-22）
+
+- `host/drift.mjs`：`loadSnapshot` / `snapshotIds` / `idsFromDocument` / `checkPresetDrift` / `checkDrift`。
+  读运行时内置预设（`agentPresets.readDocument('standard'|'cordis')`），扫描行首 `- id:` 取行 id 集合，
+  与 `modes/base/*.plugins.json` 的扁平 id 对比；缺行/多行/读取失败都算漂移。
+  只比 id（配置差异由升级时重新快照负责），块标量正文不会误命中。
+- 宿主：`host/index.mjs` 在 `provide('cyreneMemory')` 后 `ctx.inject(['agentPresets'])` 跑一次检测；
+  结果写进 `service.diagnostics.drift`，不阻断；漂移时日志给出缺失/多余行并提示更新快照重构建。
+- 测试：`tests/drift.test.mjs` 4 项（id 提取、单预设对比、双 base 对比、宿主 diagnostics 写入）；
+  `tests/build.test.mjs` 增加「cyrene 运行时模块不得注册 prompt section」的 sealed 结构断言。
+  全量 **156 项**通过。
+- 已知未做（第 5b/6）：真机 profile 的 sealed 实测（需要安装到 profile）、`/cyrene doctor` 展示漂移、
+  版本矩阵与发布。

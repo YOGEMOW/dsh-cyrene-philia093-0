@@ -123,6 +123,28 @@ test('自定义快照与 persona 的每条路径可解析（构建前置校验�
   }
 })
 
+test('sealed 约定：cyrene 运行时模块不得注册 prompt section', () => {
+  const files = [
+    'runtime/index.mjs',
+    'runtime/rails.mjs',
+    'runtime/capability.mjs',
+    'runtime/plan-bridge.mjs',
+    'runtime/memory-rail.mjs',
+    'runtime/nickname.mjs',
+    'runtime/scene.mjs',
+    'runtime/style.mjs',
+    'runtime/worldbook/index.mjs',
+    'runtime/tools.mjs',
+    'runtime/wuyu.mjs',
+    'runtime/review.mjs',
+    'runtime/volume.mjs',
+  ]
+  for (const file of files) {
+    const text = read(file)
+    assert.equal(/\.section\s*\(/.test(text), false, `${file} 不得注册 prompt section（sealed 下会被丢弃，且会误导后续维护）`)
+  }
+})
+
 test('人设与上游提取工具一致（旧仓库在场时逐字校验）', async () => {
   const legacy = process.env.LEGACY_CYRENE_REPO || 'E:/Git/repositoris/DSH-Cyrene'
   const script = path.join(repoRoot, 'scripts', 'extract-legacy.mjs')

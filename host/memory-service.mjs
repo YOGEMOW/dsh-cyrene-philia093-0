@@ -37,6 +37,11 @@ export function createMemoryService(options = {}) {
   return {
     root,
     config,
+    /** 诊断快照（漂移/迁移/镜像状态；doctor 与测试读这里）。 */
+    diagnostics: {
+      drift: null,
+      lastError: null,
+    },
 
     /** 建目录树 + 锚点占位（幂等）。 */
     ensure() {
