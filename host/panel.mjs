@@ -13,6 +13,7 @@ import { readAnchors } from '../memory/anchor.js'
 import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
 import { readVolumeState } from '../memory/persona.js'
+import { repairJournals } from '../memory/journal.js'
 import { restoreFromSiYuan } from '../memory/restore.js'
 import { readSettings, writeSettings } from '../memory/settings.js'
 import { quotaUsage } from '../memory/store.js'
@@ -158,6 +159,15 @@ export function buildPanelStatus({ service, agents } = {}) {
 /** 找到最近的昔涟活会话（夜梦手动触发用）。 */
 function findAgent(ctx, service) {
   try {
+    const pick = service?.dream?.pickAgent
+    if (typeof pick === 'function') {
+      const agent = pick()
+      if (agent !== undefined && agent !== null) return agent
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
     const agents = ctx.get('agents')
     if (agents === null || typeof agents !== 'object') return undefined
     const sessionId = service?.dream?.status?.().lastSessionId
@@ -227,6 +237,15 @@ export function createPanelHandler({ ctx, service, pluginVersion = '0.0.0' }) {
           const result = writeSettings(service.root, body?.config)
           if (result.ok !== true) return send(res, 400, { ok: false, error: result.error ?? '保存失败' })
           return send(res, 200, { ok: true, message: '已保存到 元/settings.json；重启 DSH 后生效。', settings: result.settings })
+        }
+        if (action === 'note') {
+          const report = repairJournals(service.root, { days: Number(body?.days) || 7, force: body?.force === true })
+          const written = report.days.filter((item) => item.action === 'written').map((item) => item.day)
+          return send(res, 200, {
+            ok: true,
+            message: `补记完成：写入 ${report.written} 天${written.length > 0 ? `（${written.join('、')}）` : ''}。`,
+            report,
+          })
         }
         if (action === 'restore') {
           const cfg = service?.config?.siyuan

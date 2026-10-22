@@ -26,6 +26,7 @@ import {
   writeDreamJournal,
 } from '../memory/dream.js'
 import { loadEntries } from '../memory/entries.js'
+import { buildDayNote } from '../memory/journal.js'
 import { snapshotRoot } from '../memory/backup.js'
 import { createPluginMessage, textOf } from '../runtime/rails.mjs'
 
@@ -73,26 +74,45 @@ export function installDream(ctx, service) {
     }
   }
 
-  /** 当前活着的昔涟会话（用于挑选夜梦目标；拿不到返回 ''）。 */
-  const liveCyreneSessionId = () => {
+  /** 活着的昔涟 agents，按会话创建时间从新到旧。 */
+  const liveCyreneAgents = () => {
     try {
       const agents = ctx.get('agents')
       const registry = ctx.get('agentPresets')
-      if (agents === null || typeof agents !== 'object' || typeof agents.list !== 'function') return ''
+      if (agents === null || typeof agents !== 'object' || typeof agents.list !== 'function') return []
       const list = agents.list()
-      if (!Array.isArray(list)) return ''
-      const mine = list.filter((agent) => {
-        try {
-          return cfg.injectPresets.includes(String(registry?.composedPreset(agent.ctx) ?? ''))
-        } catch {
-          return false
-        }
-      })
-      const last = mine[mine.length - 1]
-      return String(last?.id ?? last?.session?.id ?? '')
+      if (!Array.isArray(list)) return []
+      return list
+        .filter((agent) => {
+          try {
+            return cfg.injectPresets.includes(String(registry?.composedPreset(agent.ctx) ?? ''))
+          } catch {
+            return false
+          }
+        })
+        .sort((a, b) => Number(b?.session?.header?.createdAt ?? 0) - Number(a?.session?.header?.createdAt ?? 0))
     } catch {
-      return ''
+      return []
     }
+  }
+
+  /** 当前最值得作为夜梦目标的会话 id（取最近创建/打开的昔涟会话）。 */
+  const liveCyreneSessionId = () => {
+    const first = liveCyreneAgents()[0]
+    return String(first?.id ?? first?.session?.id ?? '')
+  }
+
+  /** 手动触发的目标 agent：最新活会话 → lastCyreneSessionId → undefined。 */
+  const pickAgent = () => {
+    const agent = liveCyreneAgents()[0]
+    if (agent !== undefined) return agent
+    try {
+      const sessionId = state.lastCyreneSessionId
+      if (sessionId !== '') return ctx.get('agents')?.get?.(sessionId)
+    } catch {
+      /* ignore */
+    }
+    return undefined
   }
 
   /**
@@ -229,22 +249,9 @@ export function installDream(ctx, service) {
   /** 模型没写梦志时的自动摘要（至少留下今天的条目线索，而不是一句道歉）。 */
   const fallbackJournal = () => {
     try {
-      const today = dayOf()
-      const entries = loadEntries(root).entries.filter((entry) => entry?.day === today)
-      if (entries.length === 0) return '今天没有新增记忆（自动收尾）。'
-      const counts = { 德: 0, 智: 0, 体: 0, 美: 0, 劳: 0 }
-      for (const entry of entries) if (counts[entry.axis] !== undefined) counts[entry.axis] += 1
-      const recent = entries
-        .slice(-6)
-        .map((entry) => `- [${entry.axis ?? '美'}] ${String(entry.text ?? '').slice(0, 90)}`)
-      return [
-        '今日整理（自动摘要）',
-        '',
-        `共 ${entries.length} 条：德 ${counts.德}｜智 ${counts.智}｜体 ${counts.体}｜美 ${counts.美}｜劳 ${counts.劳}`,
-        '',
-        '最近条目：',
-        ...recent,
-      ].join('\n')
+      const note = buildDayNote(root, dayOf())
+      if (note !== null) return note
+      return '今天没有新增记忆。'
     } catch {
       return '（自动收尾：本次整理没有写梦志，仅记录状态。请查看 元/梦.log。）'
     }
@@ -328,18 +335,32 @@ export function installDream(ctx, service) {
 
   /** 手动触发（命令/面板用）。 */
   const triggerDream = async (agent) => {
-    if (typeof agent?.followup !== 'function') return { ok: false, error: '没有可唤醒的会话；请先在昔涟模式里说一句话。' }
+    const target = typeof agent?.followup === 'function' ? agent : pickAgent()
+    if (typeof target?.followup !== 'function') {
+      logDream(root, 'trigger failed: no live cyrene agent')
+      return { ok: false, error: '没有可唤醒的会话；请先在昔涟模式里说一句话。' }
+    }
     try {
-      await agent.followup(createPluginMessage(`${DREAM_MARKER} force 手动夜梦整理。`, '一页永恒·夜梦'))
+      const sessionId = String(target.id ?? target.session?.id ?? '')
+      if (sessionId !== '' && state.lastCyreneSessionId !== sessionId) {
+        state.lastCyreneSessionId = sessionId
+        saveDreamState(root, state)
+        void ensureSchedule(sessionId)
+      }
+      logDream(root, `manual trigger session=${sessionId}`)
+      await target.followup(createPluginMessage(`${DREAM_MARKER} force 手动夜梦整理。`, '一页永恒·夜梦'))
       return { ok: true, message: '已启动整理（六阶段）。' }
     } catch (error) {
-      return { ok: false, error: `启动失败：${error instanceof Error ? error.message : String(error)}` }
+      const message = error instanceof Error ? error.message : String(error)
+      logDream(root, `trigger error session=${String(target?.id ?? '')} ${message}`)
+      return { ok: false, error: `启动失败：${message}` }
     }
   }
 
   service.dream = {
     ensureSchedule,
     triggerDream,
+    pickAgent,
     /** 状态快照（命令/doctor 用）。 */
     status() {
       return {

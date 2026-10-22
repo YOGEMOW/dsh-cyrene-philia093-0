@@ -265,3 +265,19 @@
   - 无梦志时 `fallbackJournal()` 用当天条目生成「今日整理（自动摘要）」（五育计数 + 最近条目）。
 - 测试：`tests/dream.test.mjs` 增加「旧会话标记被丢弃 + 自动摘要」；`tests/panel.test.mjs` 增加卷状态断言。
   全量 **185 项**通过。
+## 18. 补记（不是摘要）+ 夜梦目标修复（2026-10-23）
+
+- 用户反馈：22 号夜梦空白，23 号也没等到"自动摘要"；要求「加上补记，不是补摘要」。
+- 排查：
+  - 22 号：23:30 旧会话 501c 抢到租约并 `completed`，模型没写梦志；旧逻辑写的是 140 字节道歉。
+  - 23 号 00:16 重启后，启动 prune 按 `agents.list()` 顺序挑"活会话"选中了旧会话 aed，反而把当前会话
+    944 的日程删掉；面板「立即整理」又通过 `lastSessionId=aed` 找不到 agent，所以没有触发。
+- 修复：
+  - 活会话按 `session.header.createdAt` 从新到旧排序，只保留最新一条日程；
+  - `pickAgent()`：手动触发优先最新活会话，其次 lastCyreneSessionId；触发/失败都写 `梦.log`；
+  - 夜梦兜底与手动补记统一为「补记」：`memory/journal.js` 的 `buildDayNote`（时间 · 五育 · 正文，
+    每条最多 400 字）→ `writeDreamJournal` 追加 `## 日期 补记`；
+  - 入口：`/cyrene note [force]`、面板「补记梦志」、`scripts/repair-journals.mjs`（默认预览）。
+- 已执行：`node scripts/repair-journals.mjs --days 7 --apply` 为 2026-10-22 追加 3 条补记
+  （19:22 智、23:30 美 ×2），文件里不再只有道歉；23 号无条目，跳过。
+- 测试：`tests/journal-repair.test.mjs` 2 项；全量 **187 项**通过。
