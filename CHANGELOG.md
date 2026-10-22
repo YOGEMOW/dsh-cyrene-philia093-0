@@ -40,6 +40,7 @@
 - 截面镜像监听改挂到 agent 作用域（preset 作用域在实机收不到装配事件）。
 - 灾难恢复：`scripts/restore-siyuan.mjs`（`--dry-run` / `--force --yes`）、`/cyrene restore`、
   面板「从思源恢复」；恢复条目/锚点/梦志（missing-only，hash 去重）。手册见 `docs/RECOVERY.md`。
+- 设置面板排版重做：状态徽标、工具条、两列卡片（锚点/概况、思源/定时），统一主题变量与控件尺寸。
 
 ### 验证
 
