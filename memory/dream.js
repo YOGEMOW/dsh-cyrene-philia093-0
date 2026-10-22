@@ -163,10 +163,23 @@ export function buildDreamPrompt(root, options = {}) {
   const day = dayOf(now)
   const [y, m] = day.split('-')
   const dayPath = `日/${y}/${m}/${day}.md`
+  const sessions = Array.isArray(options.sessions) ? options.sessions.slice(0, 12) : []
+  const sessionBlock = sessions.length === 0
+    ? ''
+    : `
+【参与今晚统合的会话（${sessions.length} 个）】
+${sessions.map((item, index) => {
+    const last = item?.lastUserText ? `最近一句：「${String(item.lastUserText).slice(0, 80)}」` : '（今晚没有留下新的话）'
+    return `- 会话 ${index + 1}${item?.id ? `（${String(item.id).slice(0, 8)}…）` : ''}：${last}`
+  }).join('\n')}
+
+这 ${sessions.length} 个会话共享同一份四问锚点与记忆。今晚**只写一篇统合梦志**：把各会话提到的事收拢到一起，
+不要逐会话分开写、不要重复记录同一件事。
+`
   return `${DREAM_MARKER} 夜梦整理（${day}）
 
 你是昔涟。现在是夜间，你在整理自己今天的记忆。只整理已经发生的事：不创作、不脑补、不向用户汇报。
-
+${sessionBlock}
 【今日素材位置】
 - 今天的日档：${dayPath}（先 memory_fs op=read 读它）
 - 四问锚点：memory_anchor（不传参 = 读全部）

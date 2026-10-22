@@ -130,6 +130,7 @@ export function buildPanelStatus({ service, agents } = {}) {
       ...dream,
       lastDreamAtLabel: dream.lastDreamAt ? new Date(dream.lastDreamAt).toLocaleString() : '',
     },
+    dreamSessions: service?.dream?.listSessions?.() ?? [],
     backup: maintenance.backup ?? {},
     config: {
       siyuan: {
@@ -237,6 +238,16 @@ export function createPanelHandler({ ctx, service, pluginVersion = '0.0.0' }) {
           const result = writeSettings(service.root, body?.config)
           if (result.ok !== true) return send(res, 400, { ok: false, error: result.error ?? '保存失败' })
           return send(res, 200, { ok: true, message: '已保存到 元/settings.json；重启 DSH 后生效。', settings: result.settings })
+        }
+        if (action === 'dream-session') {
+          const result = service?.dream?.setSessionEnabled?.(String(body?.sessionId ?? ''), body?.enabled === true)
+          if (result === undefined) return send(res, 400, { ok: false, error: '夜梦未安装' })
+          return send(res, result.ok === true ? 200 : 400, {
+            ok: result.ok === true,
+            message: result.ok === true
+              ? `会话 ${String(body?.sessionId ?? '').slice(0, 8)}… 夜梦已${body?.enabled === true ? '开启' : '关闭'}。`
+              : (result.error ?? '操作失败'),
+          })
         }
         if (action === 'note') {
           const report = repairJournals(service.root, { days: Number(body?.days) || 7, force: body?.force === true })

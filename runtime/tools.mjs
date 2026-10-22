@@ -11,6 +11,7 @@ import { buildRecallBlock } from '../memory/inject.js'
 import { readAnchors, renderAnchorBlock, writeAnchorSafe } from '../memory/anchor.js'
 import { fsOp } from '../memory/fsops.js'
 import { readDay, writeDay } from '../memory/store.js'
+import { dayOf, writeDreamJournal } from '../memory/dream.js'
 import { assessWrite, sanitizeText, writeThroughGate } from './wuyu.mjs'
 import { pendingReport, promotePending } from './review.mjs'
 
@@ -96,6 +97,29 @@ export function createMemoryTools(service) {
       required: ['text', 'axis'],
     },
     run: (args) => writeThroughGate(root, args).message,
+  })
+
+  const memoryDreamJournal = stringTool({
+    name: 'memory_dream_journal',
+    description: '写今晚的梦志（梦/YYYY-MM-DD.md，≤400 字）。只在夜梦六阶段收尾时调用；同一天重复调用会追加「补记」，不覆盖。',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: str('梦志正文：统计（新增/合并/联结/归档）+ 锚点改动 + 五育体检 + 今夜没记录到的事'),
+        day: str('可选 YYYY-MM-DD；默认今天（本地时区）'),
+      },
+      required: ['text'],
+    },
+    run: (args) => {
+      const text = String(args.text ?? '').trim()
+      if (text === '') return '梦志为空，未写入。'
+      const parsed = typeof args.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args.day) ? Date.parse(`${args.day}T12:00:00`) : NaN
+      const now = Number.isFinite(parsed) ? parsed : Date.now()
+      const result = writeDreamJournal(root, text, now)
+      return result.ok === true
+        ? `梦志已写入：梦/${dayOf(now)}.md`
+        : `梦志写入失败：${result.reason ?? '未知原因'}`
+    },
   })
 
   const memorySearch = stringTool({
@@ -365,6 +389,7 @@ export function createMemoryTools(service) {
   return [
     memoryWrite,
     memorySearch,
+    memoryDreamJournal,
     memoryRead,
     memoryRecall,
     memoryUpdate,

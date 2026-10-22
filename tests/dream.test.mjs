@@ -46,6 +46,11 @@ function fakeCtx({ preset = 'chat', schedule = true } = {}) {
         return preset
       },
     },
+    agents: {
+      list() {
+        return [{ id: 'sess-1', session: { id: 'sess-1', header: { createdAt: 1 } }, ctx: {} }]
+      },
+    },
     schedule: scheduleService,
   }
   const ctx = {
@@ -187,7 +192,8 @@ test('启动清理旧会话日程；update 失败时重建', async () => {
     assert.equal(afterPrune.schedules.deadB, undefined, '没有活会话时全部清掉，等下次说话再挂')
     assert.equal(deleted.length >= 2, true)
 
-    await service.dream.ensureSchedule('live1')
+    service.dream.setSessionEnabled('live1', true)
+    await new Promise((resolve) => setTimeout(resolve, 30))
     assert.equal(deleted.some((item) => item.id === 'old'), true, 'update 失败后应删除旧任务')
     assert.equal(created.length, 1, '应重建任务')
     const log = fs.readFileSync(path.join(root, '元', '日程.log'), 'utf8')

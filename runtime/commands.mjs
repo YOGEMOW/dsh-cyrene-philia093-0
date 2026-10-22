@@ -170,8 +170,8 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
   return [
     {
       name: 'cyrene',
-      description: 'cyrene doctor｜sync｜backup｜restore｜note：诊断、同步思源、备份、恢复、补记梦志',
-      input: { hint: '(doctor|sync|backup|restore [force]|note [force])' },
+      description: 'cyrene doctor｜sync｜backup｜restore｜note｜dreams｜dream on/off：诊断/同步/备份/恢复/补记/夜梦会话',
+      input: { hint: '(doctor|sync|backup|restore [force]|note [force]|dreams|dream on|dream off)' },
       handler: async (invocation) => {
         const rawInput = String(invocation?.rawInput ?? '').trim()
         const sub = rawInput.toLowerCase()
@@ -193,6 +193,24 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
           return result.ok === true
             ? { kind: 'success', text: `已备份：${result.path ?? ''}${result.skipped === true ? '（已存在，跳过）' : ''}` }
             : { kind: 'error', text: `备份失败：${result.error ?? '未知原因'}` }
+        }
+        if (sub === 'dreams') {
+          const list = service?.dream?.listSessions?.() ?? []
+          if (list.length === 0) return { kind: 'success', text: '还没有登记过昔涟会话；在会话里说一句话后就会出现在这里。' }
+          const lines = ['夜梦会话：']
+          for (const item of list) {
+            lines.push(`- ${item.live ? '●' : '○'} ${item.shortId}｜${item.enabled ? '启用' : '关闭'}${item.scheduled ? '｜已排程' : ''}${item.lastUserText ? `｜${String(item.lastUserText).slice(0, 30)}` : ''}`)
+          }
+          return { kind: 'success', text: lines.join('\n') }
+        }
+        if (sub === 'dream on' || sub === 'dream off') {
+          const agent = invocation?.agent
+          const sessionId = String(agent?.session?.id ?? agent?.id ?? '')
+          if (sessionId === '') return { kind: 'error', text: '拿不到当前会话 id。' }
+          const result = service?.dream?.setSessionEnabled?.(sessionId, sub === 'dream on') ?? { ok: false, error: '夜梦未安装' }
+          return result.ok === true
+            ? { kind: 'success', text: `当前会话（${sessionId.slice(0, 8)}…）夜梦已${sub === 'dream on' ? '开启' : '关闭'}；明日 23:30 ${sub === 'dream on' ? '会' : '不会'}自动整理。` }
+            : { kind: 'error', text: result.error ?? '操作失败' }
         }
         if (sub === 'note' || sub === 'note force') {
           const report = repairJournals(service.root, { days: 7, force: sub.endsWith('force') })
@@ -216,7 +234,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: lines.join('\n') }
             : { kind: 'error', text: lines.join('\n') }
         }
-        return { kind: 'error', text: '用法：/cyrene doctor｜sync｜backup｜restore [force]｜note [force]' }
+        return { kind: 'error', text: '用法：/cyrene doctor｜sync｜backup｜restore [force]｜note [force]｜dreams｜dream on/off' }
       },
     },
     {

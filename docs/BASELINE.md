@@ -281,3 +281,16 @@
 - 已执行：`node scripts/repair-journals.mjs --days 7 --apply` 为 2026-10-22 追加 3 条补记
   （19:22 智、23:30 美 ×2），文件里不再只有道歉；23 号无条目，跳过。
 - 测试：`tests/journal-repair.test.mjs` 2 项；全量 **187 项**通过。
+## 19. 夜梦会话登记与统合梦志（2026-10-23）
+
+- 需求：旧插件能给所有昔涟会话挂夜梦；用户要能自行调控哪些会话启用，且夜梦执行时统合记录。
+- 根因补充：`memory_dream_journal` 工具在迁移时漏掉，夜梦提示词要求调用但模型没有工具 → 梦志空白。
+- 实现：
+  - `memory/dream-sessions.js` + `元/梦会话.json`：默认 `defaultEnabled: true`，每会话 `enabled/lastActiveAt/lastUserText/preset`；
+  - `host/dream.mjs`：每个启用会话各挂一条 23:30 任务（`dream.maxScheduledSessions` 默认 8）；
+    启动时清理未登记旧会话；`agent/pre-step` 记录最近一句；任一启用会话的标记即可触发；
+  - 统合：`buildDreamPrompt(root, { sessions })` 注入「参与今晚统合的会话 + 最近一句」，要求只写一篇；
+  - 入口：设置面板「夜梦会话」勾选列表、`/cyrene dream on|off`、`/cyrene dreams`；
+  - 工具：`runtime/tools.mjs` 补回 `memory_dream_journal`（写 `梦/YYYY-MM-DD.md`，重复追加补记）。
+- 测试：`tests/dream-sessions.test.mjs` 2 项、`tests/tools.test.mjs` 梦境工具 1 项、面板 dream-session 路由断言；
+  全量 **190 项**通过。

@@ -316,6 +316,20 @@ window.__ModuleLoader__.load({
         setForm((current) => ({ ...current, [section]: { ...current?.[section], [key]: value } }))
       }
 
+      const toggleDreamSession = async (session, enabled) => {
+        setBusy(`session:${session.id}`)
+        setNotice({ tone: '', text: '' })
+        try {
+          const result = await postAction('dream-session', { sessionId: session.id, enabled })
+          setNotice({ tone: 'ok', text: result.message ?? '已更新' })
+          await refresh()
+        } catch (error) {
+          setNotice({ tone: 'error', text: `失败：${error instanceof Error ? error.message : String(error)}` })
+        } finally {
+          setBusy('')
+        }
+      }
+
       if (state.loading) {
         return h(
           'div',
@@ -342,6 +356,7 @@ window.__ModuleLoader__.load({
       const quota = d.quota ?? {}
       const mirror = d.mirror ?? {}
       const dream = d.dream ?? {}
+      const dreamSessions = d.dreamSessions ?? []
       const backup = d.backup ?? {}
       const entries = d.entries ?? {}
       const axes = entries.axes ?? {}
@@ -505,6 +520,41 @@ window.__ModuleLoader__.load({
               { style: ui.mutedLine },
               `夜梦 ${dream.time ?? '—'} ${dream.timeZone ?? ''} · 今日${dream.dreamedToday ? '已整理' : '待整理'} · 任务 ${dream.schedules ?? 0} 个 · 快照保留 ${backup.keep ?? 7} 份`
             ),
+            h(
+              'div',
+              { style: { fontSize: 12, color: c.text3, margin: '0 0 8px' } },
+              '参与夜梦的会话（勾选后各自挂 23:30 任务；执行时合并成一篇统合梦志）'
+            ),
+            dreamSessions.length === 0
+              ? h('div', { style: ui.cardHint }, '还没有登记过昔涟会话；在会话里说一句话就会出现在这里。')
+              : h(
+                'div',
+                { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 12 } },
+                dreamSessions.map((session) =>
+                  h(
+                    'label',
+                    {
+                      key: session.id,
+                      style: { ...ui.switchRow, height: 'auto', padding: '6px 9px', border: `1px solid ${c.border}`, borderRadius: 8, background: c.layer2, minWidth: 0, alignItems: 'flex-start' },
+                    },
+                    h('input', {
+                      type: 'checkbox',
+                      style: { ...ui.check, marginTop: 2 },
+                      checked: session.enabled === true,
+                      disabled: busy !== '',
+                      onChange: (event) => void toggleDreamSession(session, event.target.checked),
+                    }),
+                    h(
+                      'span',
+                      { style: { minWidth: 0, fontSize: 12, lineHeight: 1.5 } },
+                      h('span', { style: { color: session.live ? c.success : c.text3 } }, session.live ? '● ' : '○ '),
+                      session.shortId ?? String(session.id).slice(0, 8),
+                      session.lastUserText ? h('span', { style: { color: c.text3 } }, ` · ${String(session.lastUserText).slice(0, 36)}`) : null,
+                      session.scheduled ? h('span', { style: { color: c.text3 } }, ' · 已排程') : null
+                    )
+                  )
+                )
+              ),
             h(
               'div',
               { style: ui.fieldGrid },

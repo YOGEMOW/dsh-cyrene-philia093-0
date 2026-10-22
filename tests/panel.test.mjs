@@ -56,6 +56,12 @@ function fakeService(root) {
       async triggerDream() {
         return { ok: true, message: '已启动整理。' }
       },
+      listSessions() {
+        return [{ id: 's1', shortId: 's1', live: true, enabled: true, scheduled: true, lastActiveAt: 1, lastUserText: '测试', preset: 'chat' }]
+      },
+      setSessionEnabled(sessionId, enabled) {
+        return { ok: true, session: { id: sessionId, enabled } }
+      },
     },
   }
 }
@@ -142,6 +148,10 @@ test('action：sync/backup/dream/save-config', async () => {
     const saved = JSON.parse(fs.readFileSync(path.join(root, '元', 'settings.json'), 'utf8'))
     assert.equal(saved.siyuan.enabled, false)
     assert.equal(saved.siyuan.notebook, '新本子')
+
+    const toggle = await call(handler, 'POST', '/action', { action: 'dream-session', sessionId: 's1', enabled: false })
+    assert.equal(toggle.code, 200)
+    assert.match(toggle.body.message, /夜梦已关闭/)
 
     const note = await call(handler, 'POST', '/action', { action: 'note', days: 1 })
     assert.equal(note.code, 200)

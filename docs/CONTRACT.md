@@ -82,7 +82,17 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
   `GET /status`、`GET /session?sessionId=`、`POST /action`（`sync|backup|dream|save-config`）。
 - 配置分层：默认值 ← Loader 行配置 ← `元/settings.json`（面板写）；保存后面板提示重启，轨道在
   `apply` 时按新配置重装。Token 只认环境变量（默认 `SIYUAN_API_TOKEN`），不写入 settings.json。
-- 命令入口：`/cyrene sync`、`/cyrene backup`；`/dream` 为手动夜梦。
+- 命令入口：`/cyrene sync`、`/cyrene backup`、`/cyrene restore`、`/cyrene note`、`/dream`。
+
+### 4.3 夜梦会话与统合梦志
+
+- 登记表：`元/梦会话.json`（`defaultEnabled: true` + 每会话 `enabled/lastActiveAt/lastUserText`）。
+- 每个昔涟会话默认启用夜梦；用户可在设置面板逐会话勾选、或用 `/cyrene dream on|off` 切换当前会话。
+- 调度：每个启用会话各挂一条每日 `23:30` 任务（上限 `dream.maxScheduledSessions`，默认 8）；
+  启动时清理未登记（旧/死）会话的日程。
+- 执行：任一启用会话的标记到达即领租约；提示词带上「参与今晚统合的会话 + 最近一句」，
+  **只写一篇统合梦志**（记忆本身全局共享，不按会话分文件）。
+- 写梦志工具：`memory_dream_journal`（`梦/YYYY-MM-DD.md`；重复调用追加「补记」）。
 
 ## 5. 存储
 

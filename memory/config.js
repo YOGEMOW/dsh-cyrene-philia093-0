@@ -36,7 +36,7 @@ export const DEFAULTS = {
     enabled: true,
     time: '23:30:00',
     timeZone: 'Asia/Shanghai',
-    maxScheduledSessions: 3
+    maxScheduledSessions: 8
   },
   /** 定时维护：镜像同步 + 每日快照备份。 */
   backup: {

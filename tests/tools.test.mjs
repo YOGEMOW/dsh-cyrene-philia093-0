@@ -27,7 +27,7 @@ test('工具清单：memory_* + remember/forget，全部有 schema/output/execut
     const names = tools.map((tool) => tool.name)
     for (const expected of [
       'memory_write', 'memory_search', 'memory_read', 'memory_recall', 'memory_update',
-      'memory_forget', 'memory_link', 'memory_anchor', 'memory_fs', 'remember', 'forget',
+      'memory_forget', 'memory_link', 'memory_anchor', 'memory_fs', 'memory_dream_journal', 'remember', 'forget',
     ]) {
       assert.ok(names.includes(expected), `缺少工具 ${expected}`)
     }
@@ -118,6 +118,23 @@ test('remember/forget 简写可用', () => {
     assert.equal(loadEntries(root).entries.length, 1)
     assert.match(byName.forget.execute({ keyword: '旧街' }), /已归档/)
     assert.equal(loadEntries(root).entries[0].status, 'archived')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('memory_dream_journal：写入当天梦志，重复调用追加补记', () => {
+  const { dir, root, byName } = setup()
+  try {
+    const first = byName.memory_dream_journal.execute({ text: '今晚整理了设置面板与恢复手册。' })
+    assert.match(first, /梦志已写入/)
+    const day = new Date()
+    const name = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+    const file = path.join(root, '梦', `${name}.md`)
+    assert.match(fs.readFileSync(file, 'utf8'), /今晚整理了设置面板与恢复手册/)
+    const second = byName.memory_dream_journal.execute({ text: '补一条。' })
+    assert.match(second, /梦志已写入/)
+    assert.match(fs.readFileSync(file, 'utf8'), /补记/)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

@@ -27,6 +27,12 @@ import {
 } from '../memory/dream.js'
 import { loadEntries } from '../memory/entries.js'
 import { buildDayNote } from '../memory/journal.js'
+import {
+  isDreamEnabled,
+  loadDreamSessions,
+  setDreamEnabled,
+  touchDreamSession,
+} from '../memory/dream-sessions.js'
 import { snapshotRoot } from '../memory/backup.js'
 import { createPluginMessage, textOf } from '../runtime/rails.mjs'
 
@@ -102,10 +108,13 @@ export function installDream(ctx, service) {
     return String(first?.id ?? first?.session?.id ?? '')
   }
 
-  /** 手动触发的目标 agent：最新活会话 → lastCyreneSessionId → undefined。 */
+  /** 手动触发的目标 agent：最新启用夜梦的活会话 → 最新活会话 → lastCyreneSessionId。 */
   const pickAgent = () => {
-    const agent = liveCyreneAgents()[0]
-    if (agent !== undefined) return agent
+    const enrolled = loadDreamSessions(root)
+    const live = liveCyreneAgents()
+    const enabledLive = live.find((agent) => isDreamEnabled(enrolled, String(agent?.id ?? agent?.session?.id ?? '')))
+    if (enabledLive !== undefined) return enabledLive
+    if (live[0] !== undefined) return live[0]
     try {
       const sessionId = state.lastCyreneSessionId
       if (sessionId !== '') return ctx.get('agents')?.get?.(sessionId)
@@ -115,17 +124,23 @@ export function installDream(ctx, service) {
     return undefined
   }
 
+  /** 该会话是否已登记且启用夜梦（未登记 = 旧/死会话，不触发）。 */
+  const dreamEnrolled = (sessionId) => {
+    const enrolled = loadDreamSessions(root)
+    const sid = String(sessionId ?? '')
+    return enrolled.sessions[sid] !== undefined && isDreamEnabled(enrolled, sid)
+  }
+
   /**
-   * 只保留 keepSessionId 这一条夜梦任务；其余（迁移带进来的死会话、旧会话）全部删掉。
-   * 同一个时间只该有一个"当前昔涟会话"的夜梦。
+   * 只保留 keepIds 里的夜梦任务；其余（迁移带进来的死会话、被关闭的会话）删掉。
+   * @param {string[]|string} keepIds
    */
-  const pruneSchedules = async (keepSessionId = '') => {
+  const pruneSchedules = async (keepIds = []) => {
     const svc = scheduleService()
     if (svc === null || typeof svc.delete !== 'function') return
     const entries = Object.entries(state.schedules ?? {})
     if (entries.length === 0) return
-    const keep = new Set()
-    if (keepSessionId !== '' && state.schedules[keepSessionId] !== undefined) keep.add(keepSessionId)
+    const keep = new Set((Array.isArray(keepIds) ? keepIds : [keepIds]).map(String).filter((sid) => sid !== ''))
     for (const [sid, record] of entries) {
       if (keep.has(sid)) continue
       try {
@@ -137,6 +152,31 @@ export function installDream(ctx, service) {
       }
       delete state.schedules[sid]
     }
+    saveDreamState(root, state)
+  }
+
+  /** 当前应保留日程的会话：所有登记且启用的会话（含暂时离线的）。 */
+  const desiredScheduleIds = () => {
+    const enrolled = loadDreamSessions(root)
+    return Object.entries(enrolled.sessions ?? {})
+      .filter(([, entry]) => entry?.enabled !== false)
+      .map(([sid]) => sid)
+  }
+
+  /** 删除单个会话的日程（用户关闭夜梦时）。 */
+  const removeSchedule = async (sessionId) => {
+    const sid = String(sessionId ?? '')
+    const svc = scheduleService()
+    if (sid === '' || svc === null || typeof svc.delete !== 'function') return
+    const record = state.schedules?.[sid]
+    if (record === undefined) return
+    try {
+      if (record.id !== undefined && record.id !== '') await svc.delete({ sessionId: sid, id: record.id })
+    } catch (error) {
+      logMeta('日程.log', `delete failed session=${sid} ${error instanceof Error ? error.message : String(error)}`)
+      return
+    }
+    delete state.schedules[sid]
     saveDreamState(root, state)
   }
 
@@ -175,7 +215,7 @@ export function installDream(ctx, service) {
         if (same) {
           state.schedules[sid] ??= { id: existing.id, createdAt: Date.now() }
           saveDreamState(root, state)
-          await pruneSchedules(sid)
+          await pruneSchedules(desiredScheduleIds())
           return
         }
         if (typeof svc.update === 'function') {
@@ -188,7 +228,7 @@ export function installDream(ctx, service) {
           if (result?.updated === true) {
             state.schedules[sid] = { id: existing.id, createdAt: Date.now() }
             saveDreamState(root, state)
-            await pruneSchedules(sid)
+            await pruneSchedules(desiredScheduleIds())
             return
           }
           logMeta('日程.log', `update failed code=${result?.code ?? 'unknown'}; recreate session=${sid} id=${existing.id}`)
@@ -202,7 +242,7 @@ export function installDream(ctx, service) {
       })
       const id = typeof created === 'string' ? created : String(created?.id ?? created?.taskId ?? '')
       state.schedules[sid] = { id, createdAt: Date.now() }
-      await pruneSchedules(sid)
+      await pruneSchedules(desiredScheduleIds())
       const ordered = Object.entries(state.schedules).sort((a, b) => (a[1]?.createdAt ?? 0) - (b[1]?.createdAt ?? 0))
       while (ordered.length > (cfg.dream.maxScheduledSessions ?? 3)) {
         const [oldSid, old] = ordered.shift()
@@ -234,11 +274,15 @@ export function installDream(ctx, service) {
         return { ...decision, messages: messages.filter((message) => message !== markerMsg) }
       }
       saveDreamState(root, state)
-      const prompt = buildDreamPrompt(root)
+      const enrolled = loadDreamSessions(root)
+      const sessions = Object.entries(enrolled.sessions)
+        .filter(([, entry]) => entry?.enabled !== false)
+        .map(([id, entry]) => ({ id, lastUserText: entry?.lastUserText ?? '', lastActiveAt: entry?.lastActiveAt ?? 0 }))
+      const prompt = buildDreamPrompt(root, { sessions })
       const at = messages.indexOf(markerMsg)
       const out = messages.slice()
       out.splice(at + 1, 0, createPluginMessage(prompt, '一页永恒·夜梦'))
-      logDream(root, `start session=${sessionId} force=${force} promptChars=${prompt.length}`)
+      logDream(root, `start session=${sessionId} force=${force} sessions=${sessions.length} promptChars=${prompt.length}`)
       return { ...decision, messages: out }
     } catch (error) {
       logMeta('梦.log', `trigger error ${error instanceof Error ? error.message : String(error)}`)
@@ -288,7 +332,7 @@ export function installDream(ctx, service) {
     }
   }
 
-  // 全局 pre-step：只处理昔涟预设会话；标记优先，且只认"当前会话"的标记。
+  // 全局 pre-step：只处理昔涟预设会话；按会话登记决定是否挂夜梦。
   const preStep = ctx.on('agent/pre-step', async (payload, next) => {
     const decision = await next()
     try {
@@ -299,18 +343,23 @@ export function installDream(ctx, service) {
       const messages = Array.isArray(decision?.messages) ? decision.messages : []
       const markerMsg = messages.find((message) => textOf(message).includes(DREAM_MARKER))
       if (markerMsg !== undefined) {
-        // 迁移/旧日程可能把标记投到早已不用的会话；只允许当前会话触发。
-        if (state.lastCyreneSessionId !== sessionId) {
-          logDream(root, `skip stale session=${sessionId} last=${state.lastCyreneSessionId}`)
+        // 迁移/旧日程可能把标记投到早已不用的会话；只有"登记且启用"的会话能触发。
+        if (dreamEnrolled(sessionId) !== true) {
+          logDream(root, `skip stale session=${sessionId}`)
           return { ...decision, messages: messages.filter((message) => message !== markerMsg) }
         }
         return handleTrigger(decision, messages, markerMsg, sessionId)
       }
-      if (state.lastCyreneSessionId !== sessionId) {
-        state.lastCyreneSessionId = sessionId
-        saveDreamState(root, state)
-        void ensureSchedule(sessionId)
-      }
+      const lastUser = [...messages].reverse().find((message) => textOf(message) !== '')
+      touchDreamSession(root, sessionId, {
+        preset: presetOf(agent),
+        lastUserText: lastUser === undefined ? '' : textOf(lastUser),
+      })
+      state.lastCyreneSessionId = sessionId
+      saveDreamState(root, state)
+      const enrolled = loadDreamSessions(root)
+      if (isDreamEnabled(enrolled, sessionId)) void ensureSchedule(sessionId)
+      else void removeSchedule(sessionId)
       return decision
     } catch {
       return decision
@@ -357,10 +406,43 @@ export function installDream(ctx, service) {
     }
   }
 
+  /** 设置面板/命令用：会话登记列表。 */
+  const listSessions = () => {
+    const enrolled = loadDreamSessions(root)
+    const live = liveCyreneAgents()
+    const liveIds = new Set(live.map((agent) => String(agent?.id ?? agent?.session?.id ?? '')))
+    const ids = new Set([...liveIds, ...Object.keys(enrolled.sessions ?? {})])
+    return [...ids].filter((sid) => sid !== '').map((sid) => {
+      const entry = enrolled.sessions[sid] ?? {}
+      return {
+        id: sid,
+        shortId: sid.length > 8 ? `${sid.slice(0, 8)}…` : sid,
+        live: liveIds.has(sid),
+        enabled: isDreamEnabled(enrolled, sid) && (entry.enabled !== undefined || liveIds.has(sid)),
+        scheduled: state.schedules?.[sid] !== undefined,
+        lastActiveAt: Number(entry.lastActiveAt ?? entry.createdAt ?? 0),
+        lastUserText: typeof entry.lastUserText === 'string' ? entry.lastUserText : '',
+        preset: entry.preset ?? '',
+      }
+    }).sort((a, b) => Number(b.live) - Number(a.live) || b.lastActiveAt - a.lastActiveAt)
+  }
+
+  /** 面板/命令切换某会话的夜梦。 */
+  const setSessionEnabled = (sessionId, enabled) => {
+    const sid = String(sessionId ?? '')
+    if (sid === '') return { ok: false, error: '缺少 sessionId' }
+    const entry = setDreamEnabled(root, sid, enabled === true)
+    if (enabled === true) void ensureSchedule(sid)
+    else void removeSchedule(sid)
+    return { ok: true, session: { id: sid, enabled: entry?.enabled === true } }
+  }
+
   service.dream = {
     ensureSchedule,
     triggerDream,
     pickAgent,
+    listSessions,
+    setSessionEnabled,
     /** 状态快照（命令/doctor 用）。 */
     status() {
       return {
@@ -370,6 +452,8 @@ export function installDream(ctx, service) {
         dreamedToday: dreamedToday(state, Date.now(), { time: cfg.dream.time, timeZone: cfg.dream.timeZone }),
         running: state.running !== null,
         schedules: Object.keys(state.schedules ?? {}).length,
+        sessions: listSessions().length,
+        enabledSessions: listSessions().filter((item) => item.enabled).length,
         lastSessionId: state.lastCyreneSessionId,
         lastDreamAt: state.lastDreamAt,
       }
@@ -377,8 +461,16 @@ export function installDream(ctx, service) {
   }
 
   logMeta('梦.log', `dream installed time=${cfg.dream.time} tz=${cfg.dream.timeZone}`)
-  // 启动时只留"活着的昔涟会话"那一条；没有活会话就全清，等用户下次说话再挂。
-  void pruneSchedules(liveCyreneSessionId())
+  // 启动时：给所有已登记且启用的活会话各挂一条日程，其余全清。
+  void (async () => {
+    for (const agent of liveCyreneAgents()) {
+      const sid = String(agent?.id ?? agent?.session?.id ?? '')
+      if (sid === '') continue
+      if (dreamEnrolled(sid)) await ensureSchedule(sid)
+      else await removeSchedule(sid)
+    }
+    await pruneSchedules(desiredScheduleIds())
+  })()
   return () => {
     for (const dispose of disposers) {
       try {
