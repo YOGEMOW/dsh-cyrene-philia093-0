@@ -1,63 +1,132 @@
-# dsh-cyrene-philia093-0 · 昔涟（PHILIA093）· 新卷
+# 昔涟 · PHILIA093 · 新卷
 
-> 一个有人格的记忆体：人设是她的身份，五育是她成长的尺度，记忆引擎是她的心，能力组合是她的手。
+> 一个有人格的长期记忆体：人设是她的身份，五育是她成长的尺度，记忆引擎是她的心，能力组合是她的手。
 
-本仓库是新卷的**重写版**，合并并取代两个旧插件：
+[![CI](https://github.com/YOGEMOW/dsh-cyrene-philia093-0/actions/workflows/test.yml/badge.svg)](https://github.com/YOGEMOW/dsh-cyrene-philia093-0/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![DSH](https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-blue)
+
+本仓库是 DSH（DeepSeek Harness）插件 **dsh-cyrene-philia093-0**，合并并重写了两个退役插件：
 
 | 旧插件 | 状态 |
 |---|---|
-| `dsh-cyrene` 0.6.3 | 冻结、退役（只读基线） |
+| [`dsh-cyrene`](https://github.com/Cyrene-xl/DSH-Cyrene) 0.6.3 | 冻结、退役（只读基线） |
 | `dsh-cyrene-eternal-page-remembrance` 0.5.4 | 冻结、退役（只读基线） |
 
-> ⚠️ 与旧插件**不共存**：同一 `DSH_HOME` 只能有一个昔涟记忆引擎；预设有相同 id
-> （`chat` / `cyrene-work`），安装前须先卸载旧插件。迁移见 [docs/MIGRATION.md](docs/MIGRATION.md)。
+它不是一段"角色提示词"，而是一整套可运行的 agent 组合：**人设资源 + 双模式 sealed 预设 +
+五育记忆系统 + 夜梦 + 思源镜像/恢复 + 设置面板 + 命令面**。
 
-## 当前状态
+> ⚠️ **与旧插件不共存**：三者使用相同的预设 id（`chat` / `cyrene-work`），同一 `DSH_HOME`
+> 只能有一个昔涟记忆引擎。安装前必须先卸载两个旧插件。迁移步骤见
+> [docs/MIGRATION.md](docs/MIGRATION.md)。
 
-**六步全部完成（卷 0 实现完成）。** 尚未在真机 profile 安装验证——安装前必须先卸载两个旧插件
-（preset id `chat`/`cyrene-work` 冲突），按 [docs/MIGRATION.md](docs/MIGRATION.md) 走。
+## 特性
 
-- 第 1 步：`memory/` 迁入一页永恒 0.5.4 引擎（18 模块）+ 五育扩展字段；16 个旧测试文件
-  全部通过（121 项）；`scripts/import.mjs` 幂等迁移；根目录解析永不落 CWD。
-- 第 2 步：`persona/chat.md`（14093 字符 / 852 行）、`persona/work.md`（10908 字符 / 666 行）
-  从退役插件**逐字提取**；`modes/*.mode.mjs` 薄组合；`scripts/build.mjs` 从
-  `modes/base/{standard,cordis}.plugins.json` 快照合成声明；7 项构建契约测试通过。
-- 第 3 步：`host` 提供 `cyreneMemory` 服务；`runtime` 注册 `{{cyrene_memory}}` 指针、
-  首轮记忆快照/命中/压缩重注入；`capability`（order 150）补回 sealed 丢掉的跨工具规则；
-  `plan-bridge` 插进 `planning` 隔离组按 `ctx.planMode` 激活；**四条上下文轨道**——
-  称呼（120 + `user_nickname` + `set_nickname`）、形态/场景（125 + `set_form`）、
-  风格（130 + `/style` + 温度）、世界书（140，配置落 `元/worldbook.json`）。
-  聊天模式四轨全开，工作模式只留世界书（由构建器写入 `rails` 配置）。
-- 第 4 步：五育硬门槛（溯源/五育归属/决策后果/基座只读）→ 日档或 `余页/待定/`；
-  `memory_*` + `remember/forget`；待定复检/提升；月检（五育体检写年轮，幂等）+ 年检；
-  新卷（人格快照 + 指纹，只增不改）。夜梦 23:30 六阶段与 30 分钟维护 tick（思源镜像、
-  每日快照、月度体检、月年滚动）默认开、全部 fail-open。
-- 第 5 步：能力快照漂移治理——`host/drift.mjs` 用 `agentPresets.readDocument` 读取运行时
-  内置预设，与 `modes/base/*.json` 行 id 对比；缺行/多行只告警并写进
-  `service.diagnostics.drift`；构建测试新增「cyrene 模块不得注册 prompt section」；`runtime/section-mirror.mjs` 在 `system-prompt/assemble`（complete 恢复之前）拿全量 section，把会被 sealed 吞掉的 `tool:*`/`plan:*`/未知段以 context 原样回注（`deployment:*` 与人设正文永不镜像），doctor 展示镜像/跳过清单。
-- 第 6 步：`/cyrene doctor`、`/memory`、`/dream` 命令（**独立 `cyrene-commands` 行**，与 `plan-mode`
-  同一种组合方式；注册结果写 `元/命令诊断.log`）；迁移演练测试（合成数据，源数据不动）；
-  GitHub Actions Windows + Linux 矩阵；CHANGELOG 与版本一致性测试。
-- 实机反馈修复（2026-10-22）：命令改为独立行（嵌套 inject 下命令不生效）；新增 `/cyrene sync`、
-  `/cyrene backup` 与设置面板「昔涟 · 一页永恒」（状态 + 立即同步/备份/整理 + 思源/定时配置，
-  写 `元/settings.json`）；截面镜像改挂 agent 作用域；迁移/首次启动补卷 0 `persona_hash`；
-  启动时清理死会话的夜梦日程、`update` 失败改为删除重建；迁移报告加当前数据总量与幂等说明。
-- 夜梦会话（2026-10-23）：`元/梦会话.json` 逐会话登记；面板勾选/`/cyrene dream on|off` 控制；
-  每个启用会话各挂 23:30 任务，执行时写一篇统合梦志；补回 `memory_dream_journal` 工具。
-  梦志只由模型写；模型没写时只留「本次夜梦没有产出」说明，**不复制日档内容**（夜梦与日档分开）。
-  全量 **190 项测试通过**。
+### 人设与模式
 
-| 步 | 内容 | 状态 |
-|---|---|---|
-| 0 | 新仓、契约、基线、骨架 | ✅ |
-| 1 | 记忆引擎迁入 + 等价性 + 迁移脚本 | ✅ |
-| 2 | 人设资源化 + 构建器 + 装配契约测试 | ✅ |
-| 3 | runtime rails / 能力总则 / 计划桥 | ✅ |
-| 4 | 五育闸门 + 月年复检 + 新卷 + 夜梦/镜像 | ✅ |
-| 5 | 双模式 sealed 全能力 + 漂移治理 | ✅（结构契约 + 漂移；真机安装待用户） |
-| 6 | 治理收尾 / 文档 / 版本矩阵 / 发布 | ✅ |
+- **人设即数据**：`persona/chat.md` / `persona/work.md` 从退役插件**逐字提取**，唯一真源；
+  改人格 = 开新卷（人设快照 + sha256 指纹），不是改代码。
+- **双模式 sealed**：系统提示词只保留 persona 前缀，人设不被框架说明污染；能力通过工具、
+  `variable`、`context`、`pre-step` 通道恢复，并补「能力总则」与「计划模式桥」。
+- **四条上下文轨道**：称呼（120，`{{user_nickname}}`）、形态/场景（125）、道韵/风格（130）、
+  世界书（140）；聊天模式全开，工作模式只留世界书。
+- **截面镜像**：在 sealed 吞掉之前截获 DSH 原生 prompt section（`tool:*`/`plan:*`/未知段），
+  以 context 原样回注；`deployment:*` 与人设正文永不镜像。
 
-### 构建管线（第 2 步起）
+### 五育记忆
+
+- **写入硬门槛**：溯源（用户原话或事件 id）、五育归属、决策类后果、基座只读；不过门槛进
+  `余页/待定/`，月检/年检复检后可提升。
+- **结构**：四问锚点 + 日档 + 月档/年轮 + 梦志 + 余页；写入 0600 权限、原子落盘。
+- **记忆工具**：`memory_write/search/read/recall/update/forget/link/anchor/fs/pending/promote`、
+  `memory_dream_journal`、`remember/forget`——仅昔涟预设可见。
+
+### 夜梦与维护
+
+- **逐会话夜梦**：`元/梦会话.json` 登记每个昔涟会话；设置面板勾选或
+  `/cyrene dream on|off` 控制；每个启用会话各挂 23:30 任务，执行时写**一篇统合梦志**。
+- **夜梦与日档分开**：梦志只记录模型六阶段整理产出（`memory_dream_journal`）；模型没写时
+  只留「本次夜梦没有产出」说明，不自动复制日档。
+- **维护 tick**：思源镜像、每日快照（保留 7 份）、月度五育体检、月/年滚动；默认开启、
+  全部 fail-open。
+
+### 思源镜像与灾难恢复
+
+- 单向镜像到本地思源：锚点 / 条目 / 梦志 / 余页；默认开，30 分钟兜底，
+  并在 `tool/result` / `turn/end` 触发 **1.5 秒防抖实时同步**。
+- 恢复：`node scripts/restore-siyuan.mjs --dry-run` 演练 → 正式回灌（missing-only，按正文
+  hash 去重）；本地每日快照优先。手册见 [docs/RECOVERY.md](docs/RECOVERY.md)。
+
+### 命令与设置面板
+
+| 入口 | 内容 |
+|---|---|
+| `/cyrene doctor` | 诊断根目录、persona 指纹、轨道/预算、记忆/待定、漂移、截面、夜梦、维护 |
+| `/cyrene sync` / `/cyrene backup` | 立即同步思源 / 立即快照 |
+| `/cyrene restore [force]` | 从思源回灌记忆（默认只补缺失） |
+| `/cyrene dreams` / `/cyrene dream on\|off` | 夜梦会话清单 / 切换当前会话夜梦 |
+| `/memory` / `/dream` | 记忆概览 / 手动六阶段整理 |
+| 设置 →「昔涟 · 一页永恒」 | 锚点、记忆概况、卷记录、思源/夜梦/备份配置、逐会话夜梦开关、立即同步/备份/整理/恢复 |
+
+## 两种模式
+
+| 预设 id | 名称 | 基底 | 能力 | 轨道 |
+|---|---|---|---|---|
+| `chat` | 昔涟聊天模式 | standard | sealed 全能力 + 计划桥 | 称呼 / 形态 / 风格 / 世界书 |
+| `cyrene-work` | 德谬歌工作模式 | cordis | sealed 全能力（含技能/插件管理） | 世界书 |
+
+两者都不产生新的 prompt section；所有注入走 `context` / `variable` / `pre-step`。
+
+## 快速开始
+
+要求：DSH `>= 0.2.1-rc.2`；本插件无第三方运行时依赖，不需要 `npm install`。
+
+```pwsh
+# 1. 备份并导入旧数据（幂等；先停 DSH 更稳）
+cd E:\DSH-workspace\dsh-cyrene-philia093-0
+node scripts/import.mjs --dry-run
+node scripts/import.mjs
+
+# 2. 卸载旧插件（预设 id 冲突，必须先卸）
+dsh plugin --profile desktop remove dsh-cyrene
+dsh plugin --profile desktop remove dsh-cyrene-eternal-page-remembrance
+
+# 3. 安装新插件（本地 link；也可用设置里的插件管理器）
+dsh plugin --profile desktop add "link:E:/DSH-workspace/dsh-cyrene-philia093-0"
+
+# 4. 重启 DSH，新建对话选择「昔涟聊天模式」/「德谬歌工作模式」
+```
+
+进入昔涟会话后执行 `/cyrene doctor` 自检；首次安装详细步骤、回滚见
+[docs/MIGRATION.md](docs/MIGRATION.md)。
+
+### 思源配置
+
+思源桌面端默认 `http://127.0.0.1:6806`、笔记本 `93-昔涟`。API token 只从环境变量读：
+
+```pwsh
+setx SIYUAN_API_TOKEN "你的思源 API token"
+```
+
+地址/笔记本/开关/定时可在设置面板修改，落 `元/settings.json`（保存后重启生效）。
+配置层级：默认值 ← Loader 行配置 ← `元/settings.json`。
+
+## 记忆位置
+
+```
+<DSH_HOME>/cyrene-philia093-0/
+  锚/            四问锚点
+  日/YYYY/MM/    日档（当天事实 + 五育字段 + 溯源）
+  月/ 年/        月档 / 年轮
+  梦/YYYY-MM-DD.md  夜梦（模型六阶段产出；与日档分开）
+  余页/           AI 自由写作 + 待定区（余页/待定/）
+  元/            卷.json、settings.json、梦会话.json、索引、日志、worldbook/nickname/style
+<DSH_HOME>/cyrene-philia093-0-snapshots/YYYY-MM-DD/   每日快照
+```
+
+根目录解析**永不落 CWD**：`DSH_HOME` 空白视为未设置，回落 `~/.dsh`。
+
+## 架构与构建
 
 ```
 persona/{chat,work}.md ─┐
@@ -66,18 +135,9 @@ modes/base/{standard,cordis}.plugins.json ─┴─▶ scripts/build.mjs ─▶ 
 ```
 
 - `cordis.patch.yml` 是**生成物**，不要手改；`npm run check` 校验与源一致。
-- 人设只改 `persona/`；能力/模式只改 `modes/`；上游人设重新提取用
-  `npm run extract:persona -- --from <旧仓库> --check`。
-- 内置 base 快照带 `dshVersion` 与来源路径；升级 DSH 时用第 5 步的漂移检测对比。
-
-## 设计要点
-
-- **双模式 sealed**：系统提示词只有 persona 一段（人设零污染）；能力通过工具、变量、
-  `context`、pre-step 消息恢复——外加「能力总则」与「计划模式桥」两座桥。
-- **五育发展系统**：写入硬门槛（溯源 / 五育归属 / 决策后果 / 基座只读）→ 未通过进
-  `余页/待定/` → 月检/年检复检后纳入；夜梦六阶段 + 五育体检；开新卷才改人格。
-- **地基优先**：人设是纯文本资源、能力由构建器从内置预设生成、状态在宿主层、注入在
-  预设层、契约单点维护。
+- 人设只改 `persona/`；能力/模式只改 `modes/`；DSH 升级后重新快照 base，漂移检测会告警。
+- 分层：宿主记忆服务（`host/`）→ 预置运行时（`runtime/`）→ 记忆引擎（`memory/`）→
+  构建（`scripts/`）；契约单点维护在 [docs/CONTRACT.md](docs/CONTRACT.md)。
 
 ## 文档
 
@@ -85,25 +145,34 @@ modes/base/{standard,cordis}.plugins.json ─┴─▶ scripts/build.mjs ─▶ 
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 设计方案 v1.0（完整） |
 | [docs/CONTRACT.md](docs/CONTRACT.md) | 跨插件/跨版本硬契约（预设 id、变量、order、存储、五育闸门、新卷） |
-| [docs/BASELINE.md](docs/BASELINE.md) | 冻结的旧插件与基线数据 |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | 从旧插件迁到新卷（备份→导入→卸载→安装→校验→回滚） |
 | [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失时的恢复手册（本地快照 → 思源副本 → 迁移备份） |
+| [docs/BASELINE.md](docs/BASELINE.md) | 冻结的旧插件与逐轮实施/修复记录 |
 | [philosophy/wuyu.md](philosophy/wuyu.md) | 五育 canonical 文本（逐字保留） |
 
-## 开发
+## 开发与测试
 
 ```bash
-npm test            # node --test "tests/*.test.mjs"
-npm run harness:check
-npm run build       # 第 2 步起：生成 cordis.patch.yml
-npm run check       # 生成一致性
-npm run migrate -- --dry-run   # 从旧插件导入数据（第 1 步起可用）
+npm test              # node --test "tests/*.test.mjs"（188 项）
+npm run harness:check # 运行时代码语法检查
+npm run build         # 生成 cordis.patch.yml
+npm run check         # 生成一致性
+npm run migrate -- --dry-run
 ```
 
-无第三方运行时依赖，不需要 `npm install`。
+- 零第三方运行时依赖；Windows + Linux CI 矩阵（`.github/workflows/test.yml`）。
+- 人设类改动必须附 A/B 人设一致性结果；测试只用 `tests/fixtures/` 的合成样例。
+
+## 版本与状态
+
+- 当前版本：**v0.1.0**（首个公开版本，卷 0），发布说明见
+  [docs/RELEASE-v0.1.0.md](docs/RELEASE-v0.1.0.md)。
+- 已在桌面 profile 实机运行；已知边界：sealed 下 DSH 未来新增的身份类 section 不会被镜像，
+  漂移检测 + doctor 告警；思源不可达只记日志。
+- 变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 许可与声明
 
 MIT。人设正文整理自 [Cyrene-Agent](https://github.com/Playa-Cyrene/Cyrene-Agent)（MIT）；
-角色 IP 归 HoYoverse / 米哈游所有，含角色 IP 的衍生物禁止商业使用。见
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+角色 IP 归 HoYoverse / 米哈游所有，含角色 IP 的衍生物禁止商业使用。
+详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
