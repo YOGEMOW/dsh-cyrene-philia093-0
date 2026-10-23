@@ -1,11 +1,13 @@
 # Changelog
 
-## [未发布]
+## [0.2.0] — 2026-10-23
 
-- 开新卷入人：scripts/new-volume.mjs 与 /cyrene new-volume confirm <原因>（防误触确认）；/cyrene doctor/设置面板显示卷号与指纹。
-- 夜梦逐会话登记与统合梦志；写后 1.5s 防抖同步思源；梦志与日档分开。
+- 新增开新卷入口：`scripts/new-volume.mjs`（`--dry-run` / `--confirm new-volume`）与
+  `/cyrene new-volume confirm <原因>`；开卷记录卷号/指纹并快照旧 persona，不改写人设文本。
+- README 改为昔涟口吻的通俗介绍，并补「什么时候该开新卷」的判断标准、问题清单与例子；
+  新增 [docs/TECHNICAL.md](docs/TECHNICAL.md)（给 AI/开发者的技术地图与不变量）。
+- 修正旧插件仓库链接；版本与发布说明同步。
 - 测试：192 项。
-
 
 ## [0.1.0] — 2026-10-23
 

@@ -5,7 +5,7 @@
 
 ## 1. 项目是什么
 
-- 包名：`dsh-cyrene-philia093-0`，版本 `0.1.0`。
+- 包名：`dsh-cyrene-philia093-0`，版本 `0.2.0`。
 - 类型：**纯 Bundle 插件**（不含客户端构建链、无第三方运行时依赖），随 DSH `>=0.2.1-rc.2` 运行。
 - 入口：`host/index.mjs`（宿主行）＋ `cordis.patch.yml`（两个预设声明）。
 - 合并并取代：`dsh-cyrene` 0.6.3 与 `dsh-cyrene-eternal-page-remembrance` 0.5.4。
