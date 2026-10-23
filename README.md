@@ -10,8 +10,8 @@
 
 | 旧插件 | 状态 |
 |---|---|
-| [`dsh-cyrene`](https://github.com/Cyrene-xl/DSH-Cyrene) 0.6.3 | 冻结、退役（只读基线） |
-| `dsh-cyrene-eternal-page-remembrance` 0.5.4 | 冻结、退役（只读基线） |
+| [`dsh-cyrene`](https://github.com/YOGEMOW/DSH-Cyrene) 0.6.3 | 冻结、退役（只读基线） |
+| [`dsh-cyrene-eternal-page-remembrance`](https://github.com/YOGEMOW/dsh-cyrene-eternal-page-remembrance) 0.5.4 | 冻结、退役（只读基线） |
 
 它不是一段"角色提示词"，而是一整套可运行的 agent 组合：**人设资源 + 双模式 sealed 预设 +
 五育记忆系统 + 夜梦 + 思源镜像/恢复 + 设置面板 + 命令面**。
