@@ -150,6 +150,9 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 - 卷 0 的 `persona_hash` 由迁移脚本/宿主启动补章（`memory/persona.js` 的 `ensureVolumePersonaHash`）；
   之后每次开卷都必须写指纹；空指纹视为未开卷完成。
 - 只有人（命令/配置）能开新卷；AI 只能建议并写进梦志。
+  入口：`scripts/new-volume.mjs --reason … --confirm new-volume`、`/cyrene new-volume confirm …`。
+  开卷只记录卷号/指纹并快照旧 persona，**不自动改 persona 文本**；文本改动仍需改
+  `persona/`/`philosophy/wuyu.md` 后重新 build。
 - 触发词：人格文本、五育定义、存储结构发生重大变更 → 开新卷；记忆内容变化不开卷。
 - 旧卷的人格快照存 `元/卷/NNN/persona/`，只读。
 

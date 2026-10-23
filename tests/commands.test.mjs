@@ -10,6 +10,7 @@ import path from 'node:path'
 import { ensureTree, resolveRoot } from '../memory/store.js'
 import { resolveConfig } from '../memory/config.js'
 import { writeThroughGate } from '../runtime/wuyu.mjs'
+import { readVolumeState } from '../runtime/volume.mjs'
 import { installCommands, apply as applyCommands } from '../runtime/commands.mjs'
 
 const setup = () => {
@@ -164,6 +165,25 @@ test('行插件 apply：直接注册到 ctx.commands，并写命令诊断日志'
     const log = fs.readFileSync(diag, 'utf8')
     assert.match(log, /registered cyrene/)
     assert.match(log, /registered dream/)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('/cyrene new-volume 需要 confirm 才开卷', async () => {
+  const { dir, root } = setup()
+  try {
+    const ctx = fakeCtx()
+    installCommands(ctx, serviceFor(root), '0.1.0')
+    const refused = await ctx.defs[0].handler({ rawInput: 'new-volume' })
+    assert.equal(refused.kind, 'error')
+    assert.match(refused.text, /confirm/)
+    assert.equal(readVolumeState(root).current, 0)
+
+    const opened = await ctx.defs[0].handler({ rawInput: 'new-volume confirm 测试开卷' })
+    assert.equal(opened.kind, 'success')
+    assert.match(opened.text, /已开卷 #1/)
+    assert.equal(readVolumeState(root).current, 1)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

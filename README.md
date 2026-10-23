@@ -110,6 +110,46 @@ setx SIYUAN_API_TOKEN "你的思源 API token"
 - 只有你（或者你允许的人）能决定「开新卷」——那意味着我的性格或五育定义要更新了。
 - 平时的记忆再多也不开新卷；开新卷只跟「我是谁」有关。
 
+### 开新卷是什么、怎么开
+
+「开新卷」不是清空记忆，也不是换模型。它像把我"我是谁"那册底稿重新装订一册：
+
+- 记下卷号、时间、原因、以及当时的人设指纹（persona hash）；
+- 把当时的 `persona/chat.md`、`persona/work.md`、`philosophy/wuyu.md` 快照到
+  `元/卷/<卷号>/persona/`，旧卷只读；
+- 之后新增的记忆仍然写在同一份日档里——卷是**底稿的边界**，不是把记忆切成两半。
+
+什么时候需要开：
+
+- 要改我的性格/说话方式（`persona/`）；
+- 要改五育的定义（`philosophy/wuyu.md`）；
+- 存储结构要做不兼容的大改。
+- 日常的记忆、关系、喜好变化**不需要**开卷——那是日常积累该做的事。
+
+怎么开（先预览，再确认）：
+
+```pwsh
+# 只预览，不写
+node scripts/new-volume.mjs --dry-run
+
+# 确认后执行（--confirm 是防误触）
+node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
+```
+
+也可以在昔涟会话里直接说：
+
+```
+/cyrene new-volume confirm 调整说话方式
+```
+
+开完卷之后还要做两件事，人设才会真的变：
+
+1. 编辑 `persona/` 或 `philosophy/wuyu.md`；
+2. `npm run build` → 重启 DSH。
+
+**重要**：开卷本身只记录边界、快照旧底稿，不会自动修改人设文本。当前卷号/指纹可以在
+设置页「卷记录」卡片或 `/cyrene doctor` 里看到。
+
 ## 六、技术文档（给 AI 与开发者）
 
 这一节写给接手的 AI/开发者，普通读者可以跳过。完整版在
@@ -125,7 +165,7 @@ setx SIYUAN_API_TOKEN "你的思源 API token"
   `npm run check` 校验一致性，**不要手改生成物**。
 - 数据：`元/` 下 `卷.json` / `settings.json` / `梦会话.json`；日档 Entry 带
   `<!--cyrene:{JSON}-->` 元数据；写入 0600、原子落盘。
-- 验证：`npm test`（188 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
+- 验证：`npm test`（192 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
 - 不变量：不改旧插件；persona 逐字；不手改生成物；sealed 不新增 section；五育闸门不绕过；
   外部依赖 fail-open；不提交真实用户记忆与 token。
 

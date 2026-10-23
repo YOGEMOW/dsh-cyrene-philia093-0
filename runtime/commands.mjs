@@ -14,7 +14,7 @@ import { loadEntries } from '../memory/entries.js'
 import { pendingCount } from '../memory/pending.mjs'
 import { restoreFromSiYuan } from '../memory/restore.js'
 import { quotaUsage } from '../memory/store.js'
-import { personaHash } from './volume.mjs'
+import { openVolume, personaHash } from './volume.mjs'
 import { BUDGETS, ORDERS } from './rails.mjs'
 
 const AXES = ['德', '智', '体', '美', '劳']
@@ -170,7 +170,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
     {
       name: 'cyrene',
       description: 'cyrene doctor｜sync｜backup｜restore｜dreams｜dream on/off：诊断/同步/备份/恢复/夜梦会话',
-      input: { hint: '(doctor|sync|backup|restore [force]|dreams|dream on|dream off)' },
+      input: { hint: '(doctor|sync|backup|restore [force]|dreams|dream on|dream off|new-volume confirm <reason>)' },
       handler: async (invocation) => {
         const rawInput = String(invocation?.rawInput ?? '').trim()
         const sub = rawInput.toLowerCase()
@@ -211,6 +211,21 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: `当前会话（${sessionId.slice(0, 8)}…）夜梦已${sub === 'dream on' ? '开启' : '关闭'}；明日 23:30 ${sub === 'dream on' ? '会' : '不会'}自动整理。` }
             : { kind: 'error', text: result.error ?? '操作失败' }
         }
+        if (sub.startsWith('new-volume')) {
+          const parts = rawInput.split(/\s+/)
+          if (parts.includes('confirm') !== true) {
+            return { kind: 'error', text: '开新卷会记录人格边界；确认真要开时用：/cyrene new-volume confirm <原因>' }
+          }
+          const reason = parts.slice(parts.indexOf('confirm') + 1).join(' ').trim() || '手动开新卷'
+          const result = openVolume(service.root, { reason })
+          return result.ok === true
+            ? {
+              kind: 'success',
+              text: `已开卷 #${result.id}（${reason}）。persona 指纹 ${result.hash.slice(0, 12)}…，快照在 ${result.snapshot}。\n`
+                + '注意：开卷只记录边界；要改人设文本，仍需编辑 persona/ 后 npm run build 并重启 DSH。',
+            }
+            : { kind: 'error', text: `开卷失败：${result.error ?? '未知原因'}` }
+        }
         if (sub === 'restore' || sub === 'restore force') {
           const cfg = service?.config?.siyuan
           if (cfg === undefined || cfg === null) return { kind: 'error', text: '思源配置不可用。' }
@@ -225,7 +240,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: lines.join('\n') }
             : { kind: 'error', text: lines.join('\n') }
         }
-        return { kind: 'error', text: '用法：/cyrene doctor｜sync｜backup｜restore [force]｜dreams｜dream on/off' }
+        return { kind: 'error', text: '用法：/cyrene doctor｜sync｜backup｜restore [force]｜dreams｜dream on/off｜new-volume confirm <原因>' }
       },
     },
     {

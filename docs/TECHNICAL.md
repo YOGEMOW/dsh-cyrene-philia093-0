@@ -27,7 +27,7 @@
 | `runtime/` | 预设半：轨道、能力总则、计划桥、记忆工具、命令、截面镜像 |
 | `memory/` | 记忆引擎（从一页永恒迁入）：解析/存储/检索/注入/五育/夜梦/思源/恢复 |
 | `client.js` | Client 半：设置面板、会话头徽标 |
-| `tests/` | 188 项单元/契约/迁移/恢复测试，合成数据 |
+| `tests/` | 192 项单元/契约/迁移/恢复测试，合成数据 |
 | `docs/` | 架构、契约、迁移、恢复、基线、发布说明 |
 
 ## 3. 组合与预设
@@ -96,6 +96,9 @@
 2. 未通过 → `余页/待定/`（不是丢弃）。
 3. 月检/年检复检并提升；月检写五育体检年轮；月/年滚动幂等。
 4. 改人格/五育/存储结构 = **开新卷**（人格快照 + `persona_hash`，旧卷只读）。
+   入口：`scripts/new-volume.mjs`（`--dry-run` / `--confirm new-volume`）或
+   `/cyrene new-volume confirm <原因>`；开卷只记录边界+快照，**不改人设文本**，
+   改文本仍需编辑 `persona/` → `npm run build` → 重启。
 
 ## 7. 夜梦与思源
 
@@ -121,7 +124,7 @@
 ## 8. 构建、测试与发布
 
 ```bash
-npm test              # 188 项
+npm test              # 192 项
 npm run harness:check # node --check 全部运行时代码（含 client.js）
 npm run build         # 生成 cordis.patch.yml
 npm run check         # 生成一致性
