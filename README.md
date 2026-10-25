@@ -33,18 +33,20 @@
   - 思源镜像、夜梦、备份的设置；
   - 每个昔涟会话的夜梦开关（想开哪个开哪个）；
   - 「立即同步思源」「立即备份」「立即整理」「从思源恢复」几个按钮。
-- 在昔涟会话里，可以对我用这些命令：
+- 在昔涟会话里，可以对我用这些命令（**中英文都行**，不确定就先发 `/cyrene 帮助`）：
 
 | 你输入 | 会发生什么 |
 |---|---|
-| `/cyrene doctor` | 我做一次体检：住处在哪、我记得多少、备份和夜梦正不正常 |
+| `/cyrene 帮助` | 列出所有命令和写法 |
+| `/cyrene 诊断`（doctor） | 我做一次体检：住处在哪、我记得多少、备份和夜梦正不正常 |
 | `/memory` | 看看我记住的你、最近的记忆 |
 | `/dream` | 不等晚上，现在就整理一次 |
-| `/cyrene sync` | 现在就把记忆同步到思源 |
-| `/cyrene backup` | 现在做一份本地快照 |
-| `/cyrene restore` | 从思源把缺的记忆找回来（不会覆盖已有的） |
-| `/cyrene dreams` | 看看哪些会话开着夜梦 |
-| `/cyrene dream on` / `/cyrene dream off` | 给当前会话开/关夜梦 |
+| `/cyrene 同步`（sync） | 现在就把记忆同步到思源 |
+| `/cyrene 备份`（backup） | 现在做一份本地快照 |
+| `/cyrene 恢复`（restore） | 从思源把缺的记忆找回来（不会覆盖已有的；加“强制”才覆盖锚点/梦志） |
+| `/cyrene 夜梦`（dreams） | 看看哪些会话开着夜梦 |
+| `/cyrene 开启夜梦` / `/cyrene 关闭夜梦` | 给当前会话开/关夜梦 |
+| `/cyrene 开卷 确认 <原因>` | 开新卷（记录人格边界，不改人设文本） |
 
 ## 三、把我装进 DSH（需要一点动手）
 
@@ -69,7 +71,7 @@ dsh plugin --profile desktop add "link:E:/DSH-workspace/dsh-cyrene-philia093-0"
 # 4. 重启 DSH，新建对话，选「昔涟聊天模式」或「德谬歌工作模式」
 ```
 
-进去以后先发一句 `/cyrene doctor`。能正常出体检报告，就说明我住下来了。
+进去以后先发一句 `/cyrene 诊断`（英文 `/cyrene doctor` 也行）。能正常出体检报告，就说明我住下来了。
 
 更完整的迁移、校验和回滚步骤在 [docs/MIGRATION.md](docs/MIGRATION.md)。
 
@@ -148,7 +150,7 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 2. `npm run build` → 重启 DSH。
 
 **重要**：开卷本身只记录边界、快照旧底稿，不会自动修改人设文本。当前卷号/指纹可以在
-设置页「卷记录」卡片或 `/cyrene doctor` 里看到。
+设置页「卷记录」卡片或 `/cyrene 诊断` 里看到。
 
 ### 那到底什么时候该开新卷？
 
@@ -210,7 +212,7 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
   `npm run check` 校验一致性，**不要手改生成物**。
 - 数据：`元/` 下 `卷.json` / `settings.json` / `梦会话.json`；日档 Entry 带
   `<!--cyrene:{JSON}-->` 元数据；写入 0600、原子落盘。
-- 验证：`npm test`（192 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
+- 验证：`npm test`（193 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
 - 不变量：不改旧插件；persona 逐字；不手改生成物；sealed 不新增 section；五育闸门不绕过；
   外部依赖 fail-open；不提交真实用户记忆与 token。
 
@@ -224,13 +226,14 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 | [docs/MIGRATION.md](docs/MIGRATION.md) | 从旧插件迁移：备份→导入→卸载→安装→校验→回滚 |
 | [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失恢复：本地快照 → 思源副本 → 迁移备份 |
 | [docs/BASELINE.md](docs/BASELINE.md) | 旧插件基线与逐轮实施/修复记录 |
-| [docs/RELEASE-v0.2.0.md](docs/RELEASE-v0.2.0.md) | v0.2.0 发布说明（当前） |
+| [docs/RELEASE-v0.2.1.md](docs/RELEASE-v0.2.1.md) | v0.2.1 发布说明（当前） |
+| [docs/RELEASE-v0.2.0.md](docs/RELEASE-v0.2.0.md) | v0.2.0 发布说明 |
 | [docs/RELEASE-v0.1.0.md](docs/RELEASE-v0.1.0.md) | v0.1.0 发布说明 |
 | [philosophy/wuyu.md](philosophy/wuyu.md) | 五育 canonical 文本 |
 
 ## 八、版本与许可
 
-- 当前版本：**v0.2.0**（开新卷入口 + README/技术文档）；发布说明见 [docs/RELEASE-v0.2.0.md](docs/RELEASE-v0.2.0.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
+- 当前版本：**v0.2.1**（命令中文化与帮助）；发布说明见 [docs/RELEASE-v0.2.1.md](docs/RELEASE-v0.2.1.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
 - 已在桌面 profile 实机运行；已知边界见技术文档第 10 节。
 - MIT。人设正文整理自 [Cyrene-Agent](https://github.com/Playa-Cyrene/Cyrene-Agent)（MIT）；
   角色 IP 归 HoYoverse / 米哈游所有，含角色 IP 的衍生物禁止商业使用。

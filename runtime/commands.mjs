@@ -132,7 +132,7 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
     maintenance === undefined
       ? '- 维护：未安装'
       : `- 维护：每 ${cfg.backup?.intervalMinutes ?? 30} 分钟 ｜ 快照 ${cfg.backup?.enabled === true} ｜ 思源 ${maintenance.siyuan?.enabled === true}${maintenance.lastMirrorError ? `（上次失败：${maintenance.lastMirrorError}）` : ''}`,
-    '- 手动：/cyrene sync（同步）｜/cyrene backup（备份）｜/cyrene restore（从思源恢复）｜/dream（立即整理）',
+    '- 手动：/cyrene 同步｜/cyrene 备份｜/cyrene 恢复｜/cyrene 夜梦｜/dream（立即整理）；发 /cyrene 帮助 看全部',
   ]
   return lines.join('\n')
 }
@@ -164,20 +164,64 @@ export function memoryText({ service }) {
   ].join('\n')
 }
 
+/** /cyrene 的中文帮助。 */
+export function commandHelpText() {
+  return [
+    '【昔涟 · 命令】',
+    '/cyrene 帮助 —— 显示这份说明',
+    '/cyrene 诊断（doctor） —— 体检：记忆/轨道/漂移/夜梦/备份',
+    '/cyrene 同步（sync） —— 现在就把记忆同步到思源',
+    '/cyrene 备份（backup） —— 现在做一份本地快照',
+    '/cyrene 恢复（restore） —— 从思源找回缺失的记忆；加“强制”会覆盖锚点/梦志',
+    '/cyrene 夜梦（dreams） —— 查看哪些会话开着夜梦',
+    '/cyrene 开启夜梦 / 关闭夜梦 —— 切换当前会话的夜梦',
+    '/cyrene 开卷 确认 <原因> —— 开新卷（记录人格边界，不改人设文本）',
+    '',
+    '英文名（doctor/sync/backup/restore/dreams）也能用；不确定就发 /cyrene 帮助。',
+  ].join('\n')
+}
+
+/**
+ * 把中英文输入归一成一个动作。
+ * @returns {{ action:string, force?:boolean, reason?:string }}
+ */
+export function parseCyreneCommand(rawInput) {
+  const text = String(rawInput ?? '').replace(/\s+/g, ' ').trim()
+  const lower = text.toLowerCase()
+  if (text === '' || /^(help|帮助|说明|命令|菜单)$/i.test(text)) return { action: 'help' }
+  if (/^(doctor|诊断|体检|检查)$/i.test(text)) return { action: 'doctor' }
+  if (/^(sync|同步|立即同步)$/i.test(text)) return { action: 'sync' }
+  if (/^(backup|备份|快照|立即备份)$/i.test(text)) return { action: 'backup' }
+  if (/^(restore|恢复|从思源恢复)(\s+(force|强制|强行))?$/i.test(text)) {
+    return { action: 'restore', force: /(force|强制|强行)/i.test(lower) }
+  }
+  if (/^(dreams|夜梦|夜梦列表|夜梦会话)$/i.test(text)) return { action: 'dreams' }
+  if (/^(dream on|开启夜梦|打开夜梦|开夜梦)$/i.test(text)) return { action: 'dream-on' }
+  if (/^(dream off|关闭夜梦|关掉夜梦|关夜梦)$/i.test(text)) return { action: 'dream-off' }
+  if (/^(new-volume|new volume|开卷|开新卷|新卷)(\s+.*)?$/i.test(text)) {
+    const parts = text.split(' ')
+    const at = parts.findIndex((part) => /^(confirm|确认)$/i.test(part))
+    if (at < 0) return { action: 'new-volume', confirmed: false }
+    return { action: 'new-volume', confirmed: true, reason: parts.slice(at + 1).join(' ').trim() || '手动开新卷' }
+  }
+  return { action: 'unknown' }
+}
+
 /** 三个命令的定义。 */
 export function commandDefinitions(scope, service, pluginVersion = VERSION) {
   return [
     {
       name: 'cyrene',
-      description: 'cyrene doctor｜sync｜backup｜restore｜dreams｜dream on/off：诊断/同步/备份/恢复/夜梦会话',
-      input: { hint: '(doctor|sync|backup|restore [force]|dreams|dream on|dream off|new-volume confirm <reason>)' },
+      description: '昔涟：帮助 / 诊断 / 同步 / 备份 / 恢复 / 夜梦 / 开卷（中英文都能用）',
+      input: { hint: '帮助｜诊断｜同步｜备份｜恢复｜夜梦｜开卷' },
       handler: async (invocation) => {
         const rawInput = String(invocation?.rawInput ?? '').trim()
-        const sub = rawInput.toLowerCase()
-        if (sub === '' || sub === 'doctor') {
+        const parsed = parseCyreneCommand(rawInput)
+        if (parsed.action === 'help') return { kind: 'success', text: commandHelpText() }
+        if (parsed.action === 'doctor') {
           return { kind: 'success', text: doctorText({ ctx: scope, service, agent: invocation?.agent, pluginVersion }) }
         }
-        if (sub === 'sync') {
+        if (parsed.action === 'sync') {
           const run = service?.maintenance?.syncNow
           if (typeof run !== 'function') return { kind: 'error', text: '维护未安装（config.backup.enabled != true）。' }
           const result = await run()
@@ -185,7 +229,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: `已同步到思源（条目 ${result.entries ?? 0}）。` }
             : { kind: 'error', text: `同步失败：${result.error ?? '未知原因'}` }
         }
-        if (sub === 'backup') {
+        if (parsed.action === 'backup') {
           const run = service?.maintenance?.backupNow
           if (typeof run !== 'function') return { kind: 'error', text: '维护未安装（config.backup.enabled != true）。' }
           const result = run()
@@ -193,7 +237,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: `已备份：${result.path ?? ''}${result.skipped === true ? '（已存在，跳过）' : ''}` }
             : { kind: 'error', text: `备份失败：${result.error ?? '未知原因'}` }
         }
-        if (sub === 'dreams') {
+        if (parsed.action === 'dreams') {
           const list = service?.dream?.listSessions?.() ?? []
           if (list.length === 0) return { kind: 'success', text: '还没有登记过昔涟会话；在会话里说一句话后就会出现在这里。' }
           const lines = ['夜梦会话：']
@@ -202,21 +246,24 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
           }
           return { kind: 'success', text: lines.join('\n') }
         }
-        if (sub === 'dream on' || sub === 'dream off') {
+        if (parsed.action === 'dream-on' || parsed.action === 'dream-off') {
+          const on = parsed.action === 'dream-on'
           const agent = invocation?.agent
           const sessionId = String(agent?.session?.id ?? agent?.id ?? '')
           if (sessionId === '') return { kind: 'error', text: '拿不到当前会话 id。' }
-          const result = service?.dream?.setSessionEnabled?.(sessionId, sub === 'dream on') ?? { ok: false, error: '夜梦未安装' }
+          const result = service?.dream?.setSessionEnabled?.(sessionId, on) ?? { ok: false, error: '夜梦未安装' }
           return result.ok === true
-            ? { kind: 'success', text: `当前会话（${sessionId.slice(0, 8)}…）夜梦已${sub === 'dream on' ? '开启' : '关闭'}；明日 23:30 ${sub === 'dream on' ? '会' : '不会'}自动整理。` }
+            ? { kind: 'success', text: `当前会话（${sessionId.slice(0, 8)}…）夜梦已${on ? '开启' : '关闭'}；明日 23:30 ${on ? '会' : '不会'}自动整理。` }
             : { kind: 'error', text: result.error ?? '操作失败' }
         }
-        if (sub.startsWith('new-volume')) {
-          const parts = rawInput.split(/\s+/)
-          if (parts.includes('confirm') !== true) {
-            return { kind: 'error', text: '开新卷会记录人格边界；确认真要开时用：/cyrene new-volume confirm <原因>' }
+        if (parsed.action === 'new-volume') {
+          if (parsed.confirmed !== true) {
+            return {
+              kind: 'error',
+              text: '开新卷会记录人格边界，是重要操作。\n确认真要开时用：/cyrene 开卷 确认 <原因>\n（也可以写 /cyrene new-volume confirm <原因>）',
+            }
           }
-          const reason = parts.slice(parts.indexOf('confirm') + 1).join(' ').trim() || '手动开新卷'
+          const reason = parsed.reason ?? '手动开新卷'
           const result = openVolume(service.root, { reason })
           return result.ok === true
             ? {
@@ -226,10 +273,10 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             }
             : { kind: 'error', text: `开卷失败：${result.error ?? '未知原因'}` }
         }
-        if (sub === 'restore' || sub === 'restore force') {
+        if (parsed.action === 'restore') {
           const cfg = service?.config?.siyuan
           if (cfg === undefined || cfg === null) return { kind: 'error', text: '思源配置不可用。' }
-          const report = await restoreFromSiYuan(cfg, service.root, { force: sub.endsWith('force') })
+          const report = await restoreFromSiYuan(cfg, service.root, { force: parsed.force === true })
           const lines = [
             `思源恢复：${report.ok === true ? '完成' : '有错误'}`,
             `- 扫描：日档 ${report.docs?.days ?? 0}｜锚点 ${report.docs?.anchors ?? 0}｜梦志 ${report.docs?.journals ?? 0}`,
@@ -240,7 +287,10 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
             ? { kind: 'success', text: lines.join('\n') }
             : { kind: 'error', text: lines.join('\n') }
         }
-        return { kind: 'error', text: '用法：/cyrene doctor｜sync｜backup｜restore [force]｜dreams｜dream on/off｜new-volume confirm <原因>' }
+        return {
+          kind: 'error',
+          text: `没看懂「${rawInput || '（空）'}」。\n\n${commandHelpText()}`,
+        }
       },
     },
     {
@@ -252,7 +302,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
     {
       name: 'dream',
       description: '手动触发一次夜梦整理（六阶段）',
-      input: { hint: '(force)' },
+      input: { hint: '(可选：强制)' },
       handler: async (invocation) => {
         const trigger = service?.dream?.triggerDream
         if (typeof trigger !== 'function') return { kind: 'error', text: '夜梦调度未安装（config.dream.enabled != true）。' }

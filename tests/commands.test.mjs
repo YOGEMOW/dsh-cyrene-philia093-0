@@ -188,3 +188,41 @@ test('/cyrene new-volume 需要 confirm 才开卷', async () => {
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('/cyrene 支持中文子命令与帮助', async () => {
+  const { dir, root } = setup()
+  try {
+    const ctx = fakeCtx()
+    const service = serviceFor(root, {
+      maintenance: {
+        syncNow: async () => ({ ok: true, entries: 1 }),
+        backupNow: () => ({ ok: true, path: 'C:/snap/2' }),
+      },
+    })
+    installCommands(ctx, service, '0.1.0')
+
+    const help = await ctx.defs[0].handler({ rawInput: '帮助' })
+    assert.equal(help.kind, 'success')
+    assert.match(help.text, /昔涟 · 命令/)
+    assert.match(help.text, /开卷/)
+
+    const doctor = await ctx.defs[0].handler({ rawInput: '诊断', agent: { session: { header: {} } } })
+    assert.equal(doctor.kind, 'success')
+    assert.match(doctor.text, /cyrene doctor/)
+
+    const sync = await ctx.defs[0].handler({ rawInput: '同步' })
+    assert.equal(sync.kind, 'success')
+    assert.match(sync.text, /已同步到思源/)
+
+    const opened = await ctx.defs[0].handler({ rawInput: '开卷 确认 中文测试' })
+    assert.equal(opened.kind, 'success')
+    assert.match(opened.text, /已开卷 #1/)
+    assert.equal(readVolumeState(root).current, 1)
+
+    const bad = await ctx.defs[0].handler({ rawInput: '随便说说' })
+    assert.equal(bad.kind, 'error')
+    assert.match(bad.text, /没看懂/)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
