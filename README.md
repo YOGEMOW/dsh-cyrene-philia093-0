@@ -74,6 +74,7 @@ dsh plugin --profile desktop add "link:E:/DSH-workspace/dsh-cyrene-philia093-0"
 进去以后先发一句 `/cyrene 诊断`（英文 `/cyrene doctor` 也行）。能正常出体检报告，就说明我住下来了。
 
 更完整的迁移、校验和回滚步骤在 [docs/MIGRATION.md](docs/MIGRATION.md)。
+万一装完 DSH 起不来、或者想把我卸干净：[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)——**卸载不会删掉记忆**，那条文档里有每一步的退路。
 
 ### 思源（想让我把记忆同步到思源的话）
 
@@ -225,6 +226,7 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 设计方案 v1.0 |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | 从旧插件迁移：备份→导入→卸载→安装→校验→回滚 |
 | [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失恢复：本地快照 → 思源副本 → 迁移备份 |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 装坏了/起不来：卸载、退路、自检；卸载不删记忆 |
 | [docs/BASELINE.md](docs/BASELINE.md) | 旧插件基线与逐轮实施/修复记录 |
 | [docs/RELEASE-v0.2.1.md](docs/RELEASE-v0.2.1.md) | v0.2.1 发布说明（当前） |
 | [docs/RELEASE-v0.2.0.md](docs/RELEASE-v0.2.0.md) | v0.2.0 发布说明 |
