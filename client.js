@@ -251,6 +251,12 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** 路径最后一段（显示工作区名，不露全路径）。 */
+    function baseName(value) {
+      const parts = String(value ?? '').replace(/[\\/]+$/, '').split(/[\\/]/)
+      return parts[parts.length - 1] ?? ''
+    }
+
     /** 把「我是谁」里以「卷·」开头的行拆出来，避免和四问锚点混在一起。 */
     function splitVolume(text) {
       const logs = []
@@ -263,7 +269,7 @@ window.__ModuleLoader__.load({
     }
 
     // ── 面板 ────────────────────────────────────────────────────────────────
-    function Panel() {
+    function Panel({ openSession }) {
       const [state, setState] = React.useState({ loading: true, error: '', data: null })
       const [busy, setBusy] = React.useState('')
       const [notice, setNotice] = React.useState({ tone: '', text: '' })
@@ -528,31 +534,60 @@ window.__ModuleLoader__.load({
               ? h('div', { style: ui.cardHint }, '还没有登记过昔涟会话；在会话里说一句话就会出现在这里。')
               : h(
                 'div',
-                { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 12 } },
-                dreamSessions.map((session) =>
-                  h(
-                    'label',
+                { style: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 } },
+                dreamSessions.map((session) => {
+                  const label = session.title
+                    || (session.lastUserText ? String(session.lastUserText).slice(0, 32) : `会话 ${session.shortId ?? String(session.id).slice(0, 8)}`)
+                  const meta = [
+                    session.cwd ? baseName(session.cwd) : '',
+                    session.shortId ?? String(session.id).slice(0, 8),
+                    session.lastActiveAt || session.createdAt
+                      ? new Date(Number(session.lastActiveAt || session.createdAt)).toLocaleString()
+                      : '',
+                    session.scheduled ? '已排程' : '',
+                    session.registered === false ? '未登记' : '',
+                  ].filter(Boolean).join(' · ')
+                  return h(
+                    'div',
                     {
                       key: session.id,
-                      style: { ...ui.switchRow, height: 'auto', padding: '6px 9px', border: `1px solid ${c.border}`, borderRadius: 8, background: c.layer2, minWidth: 0, alignItems: 'flex-start' },
+                      style: {
+                        display: 'flex',
+                        gap: 8,
+                        alignItems: 'flex-start',
+                        padding: '7px 10px',
+                        border: `1px solid ${c.border}`,
+                        borderRadius: 8,
+                        background: c.layer2,
+                        minWidth: 0,
+                        cursor: openSession ? 'pointer' : 'default',
+                      },
+                      title: '点击打开这个会话',
+                      onClick: () => {
+                        if (typeof openSession === 'function') openSession(session.id)
+                      },
                     },
                     h('input', {
                       type: 'checkbox',
                       style: { ...ui.check, marginTop: 2 },
                       checked: session.enabled === true,
                       disabled: busy !== '',
+                      onClick: (event) => event.stopPropagation(),
                       onChange: (event) => void toggleDreamSession(session, event.target.checked),
                     }),
                     h(
-                      'span',
-                      { style: { minWidth: 0, fontSize: 12, lineHeight: 1.5 } },
-                      h('span', { style: { color: session.live ? c.success : c.text3 } }, session.live ? '● ' : '○ '),
-                      session.shortId ?? String(session.id).slice(0, 8),
-                      session.lastUserText ? h('span', { style: { color: c.text3 } }, ` · ${String(session.lastUserText).slice(0, 36)}`) : null,
-                      session.scheduled ? h('span', { style: { color: c.text3 } }, ' · 已排程') : null
+                      'div',
+                      { style: { minWidth: 0, flex: 1 } },
+                      h(
+                        'div',
+                        { style: { fontSize: 13, fontWeight: 600, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                        h('span', { style: { color: session.live ? c.success : c.text3 } }, session.live ? '● ' : '○ '),
+                        label
+                      ),
+                      h('div', { style: { fontSize: 11, color: c.text3, lineHeight: 1.5, wordBreak: 'break-all' } }, meta)
                     )
                   )
-                )
+                })
               ),
             h(
               'div',
@@ -652,8 +687,18 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
+        const openSession = (sessionId) => {
+          try {
+            ctx.get('uiWorkspace')?.openSession?.(sessionId)
+          } catch {
+            /* 打不开会话时不影响面板操作 */
+          }
+        }
         ctx.slots.inject('settings.section', () =>
-          ctx.slots.register({ name: 'settings.section', id: 'dsh-cyrene-philia093-0', order: 90, label: '昔涟 · 一页永恒' }, Panel)
+          ctx.slots.register(
+            { name: 'settings.section', id: 'dsh-cyrene-philia093-0', order: 90, label: '昔涟 · 一页永恒' },
+            (props) => h(Panel, { ...props, openSession })
+          )
         )
         ctx.slots.inject('conversation.session.header.actions', () =>
           ctx.slots.register({ name: 'conversation.session.header.actions', id: 'dsh-cyrene-philia093-0', order: 15, label: '昔涟 · 一页永恒' }, HeaderChip)

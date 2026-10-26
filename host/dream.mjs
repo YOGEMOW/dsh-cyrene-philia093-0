@@ -67,6 +67,15 @@ export function installDream(ctx, service) {
       return ''
     }
   }
+
+  /** 会话标题（会话标题服务；拿不到就空串）。 */
+  const titleOf = (agent) => {
+    try {
+      return String(ctx.get('sessionTitle')?.get(agent?.session)?.title ?? '')
+    } catch {
+      return ''
+    }
+  }
   const allowed = (agent) => Array.isArray(cfg.injectPresets) && cfg.injectPresets.includes(presetOf(agent))
 
   /** 取 schedule 服务（没有就跳过）。 */
@@ -346,6 +355,8 @@ export function installDream(ctx, service) {
       const lastUser = [...messages].reverse().find((message) => textOf(message) !== '')
       touchDreamSession(root, sessionId, {
         preset: presetOf(agent),
+        title: titleOf(agent),
+        cwd: String(agent?.session?.header?.cwd ?? ''),
         lastUserText: lastUser === undefined ? '' : textOf(lastUser),
       })
       state.lastCyreneSessionId = sessionId
@@ -367,7 +378,7 @@ export function installDream(ctx, service) {
       if (agent === undefined || allowed(agent) !== true) return
       const sessionId = String(agent?.session?.id ?? agent?.id ?? '')
       if (sessionId === '') return
-      touchDreamSession(root, sessionId, { preset: presetOf(agent) })
+      touchDreamSession(root, sessionId, { preset: presetOf(agent), title: titleOf(agent), cwd: String(agent?.session?.header?.cwd ?? '') })
       state.lastCyreneSessionId = sessionId
       saveDreamState(root, state)
       if (isDreamEnabled(loadDreamSessions(root), sessionId)) void ensureSchedule(sessionId)
@@ -438,9 +449,76 @@ export function installDream(ctx, service) {
         scheduled: state.schedules?.[sid] !== undefined,
         lastActiveAt: Number(entry.lastActiveAt ?? entry.createdAt ?? 0),
         lastUserText: typeof entry.lastUserText === 'string' ? entry.lastUserText : '',
+        title: typeof entry.title === 'string' ? entry.title : '',
+        cwd: typeof entry.cwd === 'string' ? entry.cwd : '',
+        createdAt: Number(entry.createdAt ?? 0),
         preset: entry.preset ?? '',
+        registered: true,
       }
     }).sort((a, b) => Number(b.live) - Number(a.live) || b.lastActiveAt - a.lastActiveAt)
+  }
+
+  /** 面板用：补上会话标题/工作目录，并把其他昔涟会话也列出来（未登记）。 */
+  const listSessionsAsync = async () => {
+    const base = listSessions()
+    try {
+      const query = ctx.get('sessionQuery')
+      if (query === null || typeof query !== 'object' || typeof query.listSessions !== 'function') return base
+      const records = await query.listSessions()
+      const cyrene = (Array.isArray(records) ? records : []).filter((record) => {
+        const preset = String(record?.header?.agentPreset ?? '')
+        return preset !== '' && cfg.injectPresets.includes(preset)
+      })
+      const byId = new Map(cyrene.map((record) => [String(record.header.id), record]))
+      const ids = [...new Set([...base.map((item) => item.id), ...cyrene.map((record) => String(record.header.id))])].slice(0, 40)
+      const titles = new Map()
+      try {
+        const rows = await query.readTitleSnapshots(ids)
+        for (const row of Array.isArray(rows) ? rows : []) {
+          const title = row?.status === 'fulfilled' ? row.value?.title?.title : ''
+          if (typeof title === 'string' && title !== '') titles.set(String(row.sessionId), title)
+        }
+      } catch {
+        /* 标题读取失败不影响列表 */
+      }
+      const enrolled = loadDreamSessions(root)
+      const merged = new Map()
+      for (const item of base) {
+        const record = byId.get(item.id)
+        merged.set(item.id, {
+          ...item,
+          live: item.live || record?.live === true,
+          title: titles.get(item.id) ?? item.title ?? '',
+          cwd: item.cwd || String(record?.header?.cwd ?? ''),
+          createdAt: item.createdAt || Number(record?.header?.createdAt ?? 0),
+          registered: true,
+        })
+      }
+      for (const record of cyrene) {
+        const sid = String(record.header.id)
+        if (merged.has(sid)) continue
+        const entry = enrolled.sessions[sid] ?? {}
+        merged.set(sid, {
+          id: sid,
+          shortId: sid.length > 8 ? `${sid.slice(0, 8)}…` : sid,
+          live: record.live === true,
+          enabled: false,
+          scheduled: state.schedules?.[sid] !== undefined,
+          lastActiveAt: Number(record.header.createdAt) || 0,
+          lastUserText: typeof entry.lastUserText === 'string' ? entry.lastUserText : '',
+          title: titles.get(sid) ?? (typeof entry.title === 'string' ? entry.title : ''),
+          cwd: String(record.header.cwd ?? entry.cwd ?? ''),
+          createdAt: Number(record.header.createdAt) || 0,
+          preset: String(record.header.agentPreset ?? ''),
+          registered: false,
+        })
+      }
+      return [...merged.values()]
+        .sort((a, b) => Number(b.live) - Number(a.live) || b.lastActiveAt - a.lastActiveAt || b.createdAt - a.createdAt)
+        .slice(0, 30)
+    } catch {
+      return base
+    }
   }
 
   /** 面板/命令切换某会话的夜梦。 */
@@ -458,6 +536,7 @@ export function installDream(ctx, service) {
     triggerDream,
     pickAgent,
     listSessions,
+    listSessionsAsync,
     setSessionEnabled,
     /** 状态快照（命令/doctor 用）。 */
     status() {
@@ -482,7 +561,7 @@ export function installDream(ctx, service) {
     for (const agent of liveCyreneAgents()) {
       const sid = String(agent?.id ?? agent?.session?.id ?? '')
       if (sid === '') continue
-      touchDreamSession(root, sid, { preset: presetOf(agent) })
+      touchDreamSession(root, sid, { preset: presetOf(agent), title: titleOf(agent), cwd: String(agent?.session?.header?.cwd ?? '') })
       if (isDreamEnabled(loadDreamSessions(root), sid)) await ensureSchedule(sid)
       else await removeSchedule(sid)
     }
@@ -498,3 +577,4 @@ export function installDream(ctx, service) {
     }
   }
 }
+

@@ -31,7 +31,7 @@
 - 设置里会多一页 **「昔涟 · 一页永恒」**：
   - 看看我的四问锚点、记忆条目、五育分布、当前是第几卷；
   - 思源镜像、夜梦、备份的设置；
-  - 每个昔涟会话的夜梦开关（想开哪个开哪个）；
+  - 每个昔涟会话的夜梦开关（显示标题/工作区/时间，点一行可直接打开该会话；想开哪个开哪个）；
   - 「立即同步思源」「立即备份」「立即整理」「从思源恢复」几个按钮。
 - 在昔涟会话里，可以对我用这些命令（**中英文都行**，不确定就先发 `/cyrene 帮助`）：
 
@@ -213,7 +213,7 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
   `npm run check` 校验一致性，**不要手改生成物**。
 - 数据：`元/` 下 `卷.json` / `settings.json` / `梦会话.json`；日档 Entry 带
   `<!--cyrene:{JSON}-->` 元数据；写入 0600、原子落盘。
-- 验证：`npm test`（193 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
+- 验证：`npm test`（194 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
 - 不变量：不改旧插件；persona 逐字；不手改生成物；sealed 不新增 section；五育闸门不绕过；
   外部依赖 fail-open；不提交真实用户记忆与 token。
 
@@ -228,7 +228,8 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 | [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失恢复：本地快照 → 思源副本 → 迁移备份 |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 装坏了/起不来：卸载、退路、自检；卸载不删记忆 |
 | [docs/BASELINE.md](docs/BASELINE.md) | 旧插件基线与逐轮实施/修复记录 |
-| [docs/RELEASE-v0.2.2.md](docs/RELEASE-v0.2.2.md) | v0.2.2 发布说明（当前） |
+| [docs/RELEASE-v0.2.3.md](docs/RELEASE-v0.2.3.md) | v0.2.3 发布说明（当前） |
+| [docs/RELEASE-v0.2.2.md](docs/RELEASE-v0.2.2.md) | v0.2.2 发布说明 |
 | [docs/RELEASE-v0.2.1.md](docs/RELEASE-v0.2.1.md) | v0.2.1 发布说明 |
 | [docs/RELEASE-v0.2.0.md](docs/RELEASE-v0.2.0.md) | v0.2.0 发布说明 |
 | [docs/RELEASE-v0.1.0.md](docs/RELEASE-v0.1.0.md) | v0.1.0 发布说明 |
@@ -236,7 +237,9 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 
 ## 八、版本与许可
 
-- 当前版本：**v0.2.2**（装坏了怎么退：卸载与退路文档）；发布说明见 [docs/RELEASE-v0.2.2.md](docs/RELEASE-v0.2.2.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
+- 当前版本：**v0.2.3**（夜梦会话列表可辨认、可点开）；发布说明见
+  [docs/RELEASE-v0.2.3.md](docs/RELEASE-v0.2.3.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
+  装坏了想退：见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)（卸载不删记忆）。
 - 已在桌面 profile 实机运行；已知边界见技术文档第 10 节。
 - MIT。人设正文整理自 [Cyrene-Agent](https://github.com/Playa-Cyrene/Cyrene-Agent)（MIT）；
   角色 IP 归 HoYoverse / 米哈游所有，含角色 IP 的衍生物禁止商业使用。

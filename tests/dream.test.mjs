@@ -22,7 +22,7 @@ const setup = () => {
   return { dir, root }
 }
 
-function fakeCtx({ preset = 'chat', schedule = true } = {}) {
+function fakeCtx({ preset = 'chat', schedule = true, sessionQuery = null, sessionTitle = null } = {}) {
   const handlers = new Map()
   const created = []
   const scheduleService = schedule === false ? undefined : {
@@ -63,6 +63,8 @@ function fakeCtx({ preset = 'chat', schedule = true } = {}) {
       },
     },
     schedule: scheduleService,
+    sessionQuery,
+    sessionTitle,
   }
   const ctx = {
     created,
@@ -239,6 +241,43 @@ test('无梦志时自动摘要；非当前会话的标记被丢弃', async () =>
     const journal = fs.readFileSync(path.join(root, '梦', `${dayOf()}.md`), 'utf8')
     assert.match(journal, /本次夜梦没有产出/)
     assert.equal(journal.includes('修复了设置面板排版'), false)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+test('列表富化：标题/工作区/未登记会话', async () => {
+  const { dir, root } = setup()
+  try {
+    const query = {
+      async listSessions() {
+        return [
+          { header: { id: 'sess-1', createdAt: 111, cwd: 'E:\\work\\proj', agentPreset: 'chat' }, live: true },
+          { header: { id: 'sess-2', createdAt: 222, cwd: 'E:\\work\\other', agentPreset: 'cyrene-work' }, live: false },
+        ]
+      },
+      async readTitleSnapshots(ids) {
+        return ids.map((id) => ({
+          sessionId: id,
+          status: 'fulfilled',
+          value: { title: { title: id === 'sess-1' ? '首轮对话' : '另一段记忆' } },
+        }))
+      },
+    }
+    const service = serviceFor(root)
+    const ctx = fakeCtx({ sessionQuery: query, sessionTitle: { get: () => ({ title: '本地标题' }) } })
+    installDream(ctx, service)
+    const preStep = ctx.handlers.get('agent/pre-step')
+    await preStep({ agent: { ctx: {}, session: { id: 'sess-1', header: { cwd: 'E:\\work\\proj' } } } }, async () => ({ kind: 'enter', messages: [] }))
+
+    const list = await service.dream.listSessionsAsync()
+    const first = list.find((item) => item.id === 'sess-1')
+    const other = list.find((item) => item.id === 'sess-2')
+    assert.equal(first.title, '首轮对话')
+    assert.equal(first.cwd, 'E:\\work\\proj')
+    assert.equal(first.registered, true)
+    assert.equal(other.registered, false)
+    assert.equal(other.title, '另一段记忆')
+    assert.equal(other.enabled, false)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

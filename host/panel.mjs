@@ -185,7 +185,15 @@ export function createPanelHandler({ ctx, service, pluginVersion = '0.0.0' }) {
     try {
       const url = new URL(String(req.url ?? '/'), 'http://127.0.0.1')
       if (url.pathname === `${PANEL_PREFIX}/status` && req.method === 'GET') {
-        return send(res, 200, buildPanelStatus({ service }))
+        const status = buildPanelStatus({ service })
+        try {
+          if (typeof service?.dream?.listSessionsAsync === 'function') {
+            status.dreamSessions = await service.dream.listSessionsAsync()
+          }
+        } catch {
+          /* 富化失败时保留基础列表 */
+        }
+        return send(res, 200, status)
       }
       if (url.pathname === `${PANEL_PREFIX}/session` && req.method === 'GET') {
         const sessionId = String(url.searchParams.get('sessionId') ?? '')

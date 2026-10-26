@@ -50,6 +50,8 @@ export function touchDreamSession(root, sessionId, patch = {}) {
     ...prev,
     lastActiveAt: Date.now(),
     ...(typeof patch.preset === 'string' ? { preset: patch.preset } : {}),
+    ...(typeof patch.title === 'string' && patch.title.trim() !== '' ? { title: patch.title.trim().slice(0, 120) } : {}),
+    ...(typeof patch.cwd === 'string' && patch.cwd.trim() !== '' ? { cwd: patch.cwd.trim() } : {}),
     ...(typeof patch.lastUserText === 'string' && patch.lastUserText.trim() !== ''
       ? { lastUserText: patch.lastUserText.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT) }
       : {}),
