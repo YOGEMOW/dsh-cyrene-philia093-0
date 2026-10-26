@@ -228,14 +228,15 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 | [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失恢复：本地快照 → 思源副本 → 迁移备份 |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 装坏了/起不来：卸载、退路、自检；卸载不删记忆 |
 | [docs/BASELINE.md](docs/BASELINE.md) | 旧插件基线与逐轮实施/修复记录 |
-| [docs/RELEASE-v0.2.1.md](docs/RELEASE-v0.2.1.md) | v0.2.1 发布说明（当前） |
+| [docs/RELEASE-v0.2.2.md](docs/RELEASE-v0.2.2.md) | v0.2.2 发布说明（当前） |
+| [docs/RELEASE-v0.2.1.md](docs/RELEASE-v0.2.1.md) | v0.2.1 发布说明 |
 | [docs/RELEASE-v0.2.0.md](docs/RELEASE-v0.2.0.md) | v0.2.0 发布说明 |
 | [docs/RELEASE-v0.1.0.md](docs/RELEASE-v0.1.0.md) | v0.1.0 发布说明 |
 | [philosophy/wuyu.md](philosophy/wuyu.md) | 五育 canonical 文本 |
 
 ## 八、版本与许可
 
-- 当前版本：**v0.2.1**（命令中文化与帮助）；发布说明见 [docs/RELEASE-v0.2.1.md](docs/RELEASE-v0.2.1.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
+- 当前版本：**v0.2.2**（装坏了怎么退：卸载与退路文档）；发布说明见 [docs/RELEASE-v0.2.2.md](docs/RELEASE-v0.2.2.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
 - 已在桌面 profile 实机运行；已知边界见技术文档第 10 节。
 - MIT。人设正文整理自 [Cyrene-Agent](https://github.com/Playa-Cyrene/Cyrene-Agent)（MIT）；
   角色 IP 归 HoYoverse / 米哈游所有，含角色 IP 的衍生物禁止商业使用。
