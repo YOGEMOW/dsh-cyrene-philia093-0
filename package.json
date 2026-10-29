@@ -1,6 +1,6 @@
 {
   "name": "dsh-cyrene-philia093-0",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "昔涟（PHILIA093）· 新卷：sealed 人设 + 五育成长记忆 + 双模式能力（standard / cordis）",
   "type": "module",
   "main": "./host/index.mjs",
@@ -40,7 +40,7 @@
     "id": "dsh-cyrene-philia093-0",
     "name": "昔涟（PHILIA093）",
     "displayName": "昔涟（PHILIA093）",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "repo": "cyrene-philia093-0",
     "permissions": [],
     "bundle": {

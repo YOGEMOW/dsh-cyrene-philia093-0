@@ -251,6 +251,13 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** 短会话 id：去掉 session- 前缀。 */
+    function shortId(value) {
+      const raw = String(value ?? '')
+      const core = raw.startsWith('session-') ? raw.slice(8) : raw
+      return core.length > 8 ? `${core.slice(0, 8)}…` : core
+    }
+
     /** 路径最后一段（显示工作区名，不露全路径）。 */
     function baseName(value) {
       const parts = String(value ?? '').replace(/[\\/]+$/, '').split(/[\\/]/)
@@ -528,7 +535,7 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { style: { fontSize: 12, color: c.text3, margin: '0 0 8px' } },
-              '参与夜梦的会话（勾选后各自挂 23:30 任务；执行时合并成一篇统合梦志）'
+              '参与夜梦的会话（点一行打开会话；勾选框只开关夜梦，不会跳转）'
             ),
             dreamSessions.length === 0
               ? h('div', { style: ui.cardHint }, '还没有登记过昔涟会话；在会话里说一句话就会出现在这里。')
@@ -537,10 +544,10 @@ window.__ModuleLoader__.load({
                 { style: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 } },
                 dreamSessions.map((session) => {
                   const label = session.title
-                    || (session.lastUserText ? String(session.lastUserText).slice(0, 32) : `会话 ${session.shortId ?? String(session.id).slice(0, 8)}`)
+                    || (session.lastUserText ? String(session.lastUserText).slice(0, 32) : `未命名会话（${session.shortId ?? shortId(session.id)}）`)
                   const meta = [
                     session.cwd ? baseName(session.cwd) : '',
-                    session.shortId ?? String(session.id).slice(0, 8),
+                    session.shortId ?? shortId(session.id),
                     session.lastActiveAt || session.createdAt
                       ? new Date(Number(session.lastActiveAt || session.createdAt)).toLocaleString()
                       : '',

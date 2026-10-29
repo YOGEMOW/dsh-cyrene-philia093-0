@@ -68,6 +68,13 @@ export function installDream(ctx, service) {
     }
   }
 
+  /** 短 id：去掉 session- 前缀，保留 8 位，便于区分。 */
+  const shortIdOf = (sessionId) => {
+    const raw = String(sessionId ?? '')
+    const core = raw.startsWith('session-') ? raw.slice(8) : raw
+    return core.length > 8 ? `${core.slice(0, 8)}…` : core
+  }
+
   /** 会话标题（会话标题服务；拿不到就空串）。 */
   const titleOf = (agent) => {
     try {
@@ -443,7 +450,7 @@ export function installDream(ctx, service) {
       const entry = enrolled.sessions[sid] ?? {}
       return {
         id: sid,
-        shortId: sid.length > 8 ? `${sid.slice(0, 8)}…` : sid,
+        shortId: shortIdOf(sid),
         live: liveIds.has(sid),
         enabled: isDreamEnabled(enrolled, sid),
         scheduled: state.schedules?.[sid] !== undefined,
@@ -485,6 +492,8 @@ export function installDream(ctx, service) {
       const merged = new Map()
       for (const item of base) {
         const record = byId.get(item.id)
+        // 登记表/旧日程里可能有已经被删除的会话：DSH 的会话清单里找不到就不再展示。
+        if (item.live !== true && record === undefined) continue
         merged.set(item.id, {
           ...item,
           live: item.live || record?.live === true,
@@ -500,7 +509,7 @@ export function installDream(ctx, service) {
         const entry = enrolled.sessions[sid] ?? {}
         merged.set(sid, {
           id: sid,
-          shortId: sid.length > 8 ? `${sid.slice(0, 8)}…` : sid,
+          shortId: shortIdOf(sid),
           live: record.live === true,
           enabled: false,
           scheduled: state.schedules?.[sid] !== undefined,

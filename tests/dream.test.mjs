@@ -13,6 +13,7 @@ import { resolveConfig } from '../memory/config.js'
 import { ensureTree, resolveRoot } from '../memory/store.js'
 import { DREAM_MARKER, acquireDreamLease, dayOf, dreamedToday, loadDreamState, saveDreamState } from '../memory/dream.js'
 import { writeThroughGate } from '../runtime/wuyu.mjs'
+import { setDreamEnabled } from '../memory/dream-sessions.js'
 import { installDream } from '../host/dream.mjs'
 
 const setup = () => {
@@ -263,6 +264,7 @@ test('列表富化：标题/工作区/未登记会话', async () => {
         }))
       },
     }
+    setDreamEnabled(root, 'session-gone', true)
     const service = serviceFor(root)
     const ctx = fakeCtx({ sessionQuery: query, sessionTitle: { get: () => ({ title: '本地标题' }) } })
     installDream(ctx, service)
@@ -278,6 +280,7 @@ test('列表富化：标题/工作区/未登记会话', async () => {
     assert.equal(other.registered, false)
     assert.equal(other.title, '另一段记忆')
     assert.equal(other.enabled, false)
+    assert.equal(list.some((item) => item.id === 'session-gone'), false, 'DSH 里已删除的会话不再展示')
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }

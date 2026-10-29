@@ -19,6 +19,13 @@ import { BUDGETS, ORDERS } from './rails.mjs'
 
 const AXES = ['德', '智', '体', '美', '劳']
 
+/** 短会话 id（去掉 session- 前缀）。 */
+function shortSessionId(value) {
+  const raw = String(value ?? '')
+  const core = raw.startsWith('session-') ? raw.slice(8) : raw
+  return core.length > 8 ? `${core.slice(0, 8)}…` : core
+}
+
 /** 版本号（doctor 展示）。 */
 const VERSION = (() => {
   try {
