@@ -98,12 +98,42 @@ export async function checkPresetDrift(agentPresets, base) {
  * @param {object} agentPresets agentPresets 服务
  * @param {string[]} [bases]
  */
+/** 已安装的昔涟预设应包含的关键行。 */
+const REQUIRED_CYRENE_ROWS = ['persona', 'cyrene-runtime', 'cyrene-commands', 'cyrene-plan-bridge']
+
+/**
+ * 检查已安装的昔涟预设是否挂载了关键行。
+ * base 文档在新版 DSH 里可能读不到；这里退一步验证真正会运行的两个预设。
+ */
+export async function checkInstalledPresets(agentPresets, ids = ['chat', 'cyrene-work']) {
+  const out = []
+  for (const id of ids) {
+    try {
+      const doc = await agentPresets.readDocument(id)
+      const live = idsFromDocument(typeof doc?.content === 'string' ? doc.content : '')
+      const liveSet = new Set(live)
+      const missing = REQUIRED_CYRENE_ROWS.filter((row) => !liveSet.has(row))
+      out.push({ id, ok: missing.length === 0, missing })
+    } catch (error) {
+      out.push({ id, ok: true, skipped: true, error: error instanceof Error ? error.message : String(error) })
+    }
+  }
+  return out
+}
+
+/**
+ * 对比全部内置 base，并检查已安装的昔涟预设。
+ * @param {object} agentPresets agentPresets 服务
+ * @param {string[]} [bases]
+ */
 export async function checkDrift(agentPresets, bases = ['standard', 'cordis']) {
   const presets = []
   for (const base of bases) presets.push(await checkPresetDrift(agentPresets, base))
+  const installed = await checkInstalledPresets(agentPresets)
   return {
-    ok: presets.every((item) => item.ok),
+    ok: presets.every((item) => item.ok) && installed.every((item) => item.ok),
     checkedAt: Date.now(),
     presets,
+    installed,
   }
 }

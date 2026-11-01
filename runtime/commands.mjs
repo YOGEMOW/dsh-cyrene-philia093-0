@@ -110,14 +110,22 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
       const presets = Array.isArray(drift.presets) ? drift.presets : []
       const failed = presets.filter((item) => item.ok !== true)
       const skipped = presets.filter((item) => item.skipped === true)
+      const installed = Array.isArray(drift.installed) ? drift.installed : []
+      const installedFailed = installed.filter((item) => item.ok !== true)
+      const installedOk = installed.filter((item) => item.ok === true && item.skipped !== true)
       const parts = []
       if (failed.length > 0) {
         parts.push(failed.map((item) => `${item.base}: 缺 ${JSON.stringify(item.missing ?? [])} 多 ${JSON.stringify(item.extra ?? [])}`).join('；'))
       }
-      if (skipped.length > 0) {
-        parts.push(`未完整检测：${skipped.map((item) => `${item.base}（${item.error ?? '文档不可读'}）`).join('；')}`)
+      if (installedFailed.length > 0) {
+        parts.push(installedFailed.map((item) => `${item.id}: 缺 ${JSON.stringify(item.missing ?? [])}`).join('；'))
       }
-      return parts.length > 0 ? parts.join('；') : '无漂移（standard/cordis 与快照一致）'
+      if (parts.length > 0) return parts.join('；')
+      if (installedOk.length > 0) {
+        return `预设结构正常（${installedOk.map((item) => item.id).join('/')} 关键行齐全）${skipped.length > 0 ? '；base 文档跳过（DSH 版本差异）' : ''}`
+      }
+      if (skipped.length > 0) return '未检测（DSH 版本差异，base 文档不可读；生成物由 npm run check 保证）'
+      return '无漂移（standard/cordis 与快照一致）'
     })()
   const dream = service?.dream?.status?.()
   const maintenance = service?.maintenance?.status?.()

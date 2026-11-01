@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.2] — 2026-11-01
+
+- doctor 漂移诊断收口：新增已安装预设检查（chat/cyrene-work 关键行）；base 文档不可读时跳过，
+  不再显示 `未完整检测：standard` 或整页缺失列表。
+- 测试：202 项。
+
 ## [0.4.1] — 2026-11-01
 
 - 修复 Linux CI：`safeRelPath` 在 POSIX 上统一把 `/` 与 `\\` 当分隔符，同时继续拒绝 Windows 盘符路径。
