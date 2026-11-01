@@ -130,7 +130,7 @@ test('memory_dream_journal：写入当天梦志，重复调用追加补记', () 
     assert.match(first, /梦志已写入/)
     const day = new Date()
     const name = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
-    const file = path.join(root, '梦', `${name}.md`)
+    const file = path.join(root, '梦境', name.slice(0, 4), name.slice(5, 7), `${name}.md`)
     assert.match(fs.readFileSync(file, 'utf8'), /今晚整理了设置面板与恢复手册/)
     const second = byName.memory_dream_journal.execute({ text: '补一条。' })
     assert.match(second, /梦志已写入/)

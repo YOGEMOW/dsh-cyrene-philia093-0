@@ -34,8 +34,8 @@ test('梦志正文归一：保留二级标题「日期 梦志」，只去掉一�
 
 test('月/年档 hpath 与正文归一', () => {
   const cfg = { rootHPath: '/一页永恒' }
-  assert.equal(archiveHPath(cfg, 'month', '2026-10'), '/一页永恒/月/2026/2026-10 · 月档')
-  assert.equal(archiveHPath(cfg, 'year', '2026'), '/一页永恒/年/2026 · 年轮')
+  assert.equal(archiveHPath(cfg, 'month', '2026-10'), '/一页永恒/岁月涟漪/月响/2026/2026-10 · 月响')
+  assert.equal(archiveHPath(cfg, 'year', '2026'), '/一页永恒/岁月涟漪/年轮/2026 · 年轮')
 
   const raw = '---\nmonth: 2026-10\nentries: 3\n---\n\n# 2026-10 · 月档\n\n## 主题：德（1 条）\n\n- [I8] 内容\n'
   const body = normalizeArchiveBody(raw)

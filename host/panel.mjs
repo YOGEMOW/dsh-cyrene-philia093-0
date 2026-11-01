@@ -130,6 +130,7 @@ export function buildPanelStatus({ service, agents } = {}) {
       lastDreamAtLabel: dream.lastDreamAt ? new Date(dream.lastDreamAt).toLocaleString() : '',
     },
     dreamSessions: service?.dream?.listSessions?.() ?? [],
+    watchdog: maintenance.watchdog ?? null,
     backup: maintenance.backup ?? {},
     config: {
       siyuan: {

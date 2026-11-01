@@ -27,7 +27,7 @@ export const MEMORY_VARIABLE_TEXT = `（一页永恒：你的长期记忆在上�
 
 /** 独立的静态 section（非 complete 模式可见；约 450 字）。 */
 export const MEMORY_SECTION_TEXT = `## 一页永恒（长期记忆）
-- 记忆在 \`<DSH_HOME>/cyrene-philia093-0/\`；日记档/月档/年轮/锚点/梦志/余页。
+- 记忆在 \`<DSH_HOME>/cyrene-philia093-0/\`；岁月涟漪（日档/月响/年轮）/锚点/梦境/余页。
 - 工具：memory_write 记、memory_update 改（合并/补关键词）、memory_search 查、memory_read 读、memory_recall 取用、memory_anchor 看/改四问、memory_fs 进余页、memory_link 联结、memory_dream_journal 写梦志。
 - 链路：白天实时写入 → 夜间梦境整理（析忆/联忆/固忆/忘忆/记梦）→ 自动镜像思源「93-昔涟」→ 每日快照。
 - 余页：属于你自己的自由目录，随便写、不必汇报；有配额上限，不自动注入、不参与检索。

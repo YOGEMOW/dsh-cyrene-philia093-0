@@ -10,6 +10,7 @@
  * 默认开（config.dream.enabled），全部 fail-open：schedule 服务不可用只记日志。
  */
 import { appendFileSync, existsSync } from 'node:fs'
+import { absPath, dreamRelPath } from '../memory/paths.js'
 import { join } from 'node:path'
 
 import {
@@ -387,7 +388,7 @@ export function installDream(ctx, service) {
     const ok = kind === 'completed' || kind === 'forked' || kind === ''
     try {
       if (ok) markDayDreamed(root)
-      const journalPath = join(root, '梦', `${dayOf()}.md`)
+      const journalPath = absPath(root, dreamRelPath(dayOf()))
       if (existsSync(journalPath) === false) {
         writeDreamJournal(root, fallbackJournal())
       }

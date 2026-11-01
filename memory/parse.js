@@ -18,6 +18,8 @@
 
 import { createHash } from 'node:crypto';
 
+import { dayRelPath } from './paths.js';
+
 // ---------------------------------------------------------------------------
 // 枚举与常量
 // ---------------------------------------------------------------------------
@@ -73,12 +75,7 @@ function hhmm(ms) {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-/** 日期字符串 → 相对根目录的日档路径（posix 分隔符） */
-function dayRelPath(day) {
-  const m = DAY_DATE_RE.exec(String(day || ''));
-  if (!m) return '';
-  return `日/${m[1]}/${m[2]}/${m[1]}-${m[2]}-${m[3]}.md`;
-}
+/** 日期字符串 → 相对根目录的日档路径（posix 分隔符；具体层级见 paths.js） */
 
 /** 日期 + "HH:MM" → 本地时间戳；非法返回 NaN */
 function timestampFrom(day, time) {

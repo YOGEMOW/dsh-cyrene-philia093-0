@@ -16,6 +16,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 import { normalizeEntry, parseDay, parseFrontMatter, renderDay, renderFrontMatter } from './parse.js';
+import { DAY_ROOT, LEGACY_DAY_ROOT, TOP_DIRS as LAYOUT_TOP_DIRS, dayRelPath as layoutDayRelPath, legacyDayRelPath } from './paths.js';
 
 // ---------------------------------------------------------------------------
 // 常量
@@ -30,13 +31,13 @@ const ANCHOR_FILES = {
 };
 
 /** 顶层目录（元/索引与日志之外都被配额统计覆盖） */
-const TOP_DIRS = ['锚', '日', '月', '年', '梦', '档', '余页', '元'];
+const TOP_DIRS = LAYOUT_TOP_DIRS;
 
 /** 余页预建子目录 */
 const SELF_DIRS = ['余页/笔记', '余页/草稿', '余页/.nosync'];
 
 /** quotaUsage.byTop 的固定键顺序 */
-const QUOTA_KEYS = ['日', '月', '年', '锚', '梦', '档', '余页', '元', '其它'];
+const QUOTA_KEYS = ['岁月涟漪', '锚', '梦境', '档', '余页', '元', '其它'];
 
 /** 锚点占位正文（≤130 字，等真实材料再改写） */
 const DEFAULT_ANCHOR_TEXT = {
@@ -425,7 +426,7 @@ export function writeJSON(file, obj) {
 // ---------------------------------------------------------------------------
 
 /**
- * 日档路径（相对根目录，posix 分隔符）：日/YYYY/MM/YYYY-MM-DD.md。
+ * 日档路径（相对根目录，posix 分隔符）：岁月涟漪/日档/YYYY/MM/YYYY-MM-DD.md。
  * @param {string} root 保留参数（与契约签名一致，便于调用方统一）
  * @param {string} day YYYY-MM-DD
  * @returns {string|null} 非法日期 → null
@@ -433,9 +434,7 @@ export function writeJSON(file, obj) {
 export function dayFilePath(root, day) {
   void root;
   try {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ''));
-    if (!m) return null;
-    return `日/${m[1]}/${m[2]}/${m[1]}-${m[2]}-${m[3]}.md`;
+    return layoutDayRelPath(day) || null;
   } catch {
     return null;
   }
@@ -452,15 +451,24 @@ export function readDay(root, day) {
   try {
     const rel = dayFilePath(root, day);
     if (!rel) return { ...empty, errors: [`非法日期：${String(day)}`] };
-    const abs = safeRelPath(resolveRoot(root), rel);
+    let abs = safeRelPath(resolveRoot(root), rel);
     if (!abs) return { ...empty, errors: [`日档路径越界：${rel}`] };
+    let actualRel = rel;
+    if (!fs.existsSync(abs)) {
+      const legacy = legacyDayRelPath(day);
+      const legacyAbs = legacy ? safeRelPath(resolveRoot(root), legacy) : null;
+      if (legacyAbs && fs.existsSync(legacyAbs)) {
+        abs = legacyAbs;
+        actualRel = legacy;
+      }
+    }
     const raw = readTextSafe(abs);
     if (!raw) return empty;
     const parsed = parseDay(raw);
     const entries = (Array.isArray(parsed.entries) ? parsed.entries : []).map((entry) =>
       normalizeEntry(
-        { ...(entry && typeof entry === 'object' ? entry : {}), day, path: rel },
-        { day, path: rel, now: entry && entry.created_at },
+        { ...(entry && typeof entry === 'object' ? entry : {}), day, path: actualRel },
+        { day, path: actualRel, now: entry && entry.created_at },
       ),
     );
     const front = parsed.front && typeof parsed.front === 'object' ? parsed.front : {};
@@ -535,8 +543,7 @@ export function listDays(root) {
   const days = new Set();
   try {
     const base = resolveRoot(root);
-    const start = safeRelPath(base, '日');
-    if (!start || !fs.existsSync(start)) return [];
+    const starts = [safeRelPath(base, DAY_ROOT), safeRelPath(base, LEGACY_DAY_ROOT)].filter(Boolean);
     const visit = (absDir) => {
       let entries;
       try {
@@ -556,7 +563,7 @@ export function listDays(root) {
         if (m) days.add(m[1]);
       }
     };
-    visit(start);
+    for (const start of starts) if (fs.existsSync(start)) visit(start);
   } catch {
     /* 读不到就是空列表 */
   }

@@ -180,7 +180,7 @@ export function commandHelpText() {
     '/cyrene 诊断（doctor） —— 体检：记忆/轨道/漂移/夜梦/备份',
     '/cyrene 同步（sync） —— 现在就把记忆同步到思源',
     '/cyrene 备份（backup） —— 现在做一份本地快照',
-    '/cyrene 月档（roll） —— 立即创建/整理本月度与年度文件',
+    '/cyrene 月响（roll） —— 立即整理本月月响与年度文件',
     '/cyrene 恢复（restore） —— 从思源找回缺失的记忆；加“强制”会覆盖锚点/梦志',
     '/cyrene 夜梦（dreams） —— 查看哪些会话开着夜梦',
     '/cyrene 开启夜梦 / 关闭夜梦 —— 切换当前会话的夜梦',
@@ -201,7 +201,7 @@ export function parseCyreneCommand(rawInput) {
   if (/^(doctor|诊断|体检|检查)$/i.test(text)) return { action: 'doctor' }
   if (/^(sync|同步|立即同步)$/i.test(text)) return { action: 'sync' }
   if (/^(backup|备份|快照|立即备份)$/i.test(text)) return { action: 'backup' }
-  if (/^(roll|月档|整理月档|年档|整理年档|整理月年|整理)$/i.test(text)) return { action: 'roll' }
+  if (/^(roll|月响|月档|整理月响|整理月档|年轮|年档|整理年轮|整理年档|整理月年|整理)$/i.test(text)) return { action: 'roll' }
   if (/^(restore|恢复|从思源恢复)(\s+(force|强制|强行))?$/i.test(text)) {
     return { action: 'restore', force: /(force|强制|强行)/i.test(lower) }
   }
@@ -254,12 +254,12 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
           const month = rolling?.monthly ?? {}
           const year = rolling?.yearly ?? {}
           const monthLine = month.created === true
-            ? `月档已生成：月/${new Date(now).getFullYear()}/${ensure.month}.md（${month.entries ?? 0} 条）`
+            ? `月响已生成：岁月涟漪/月响/${new Date(now).getFullYear()}/${ensure.month}.md（${month.entries ?? 0} 条）`
             : month.reason === 'exists'
-              ? `月档已存在（${month.entries ?? 0} 条），未覆盖`
+              ? `月响已存在（${month.entries ?? 0} 条），未覆盖`
               : `上个月没有可整理的日档（${month.reason ?? 'empty'}）`
           const yearLine = year.created === true
-            ? `年轮已定格：年/${year.year}.md`
+            ? `年轮已定格：岁月涟漪/年轮/${year.year}.md`
             : year.reason === 'not-january'
               ? '年轮要跨年后（1 月）才定格'
               : year.reason === 'exists'
@@ -268,7 +268,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
           return {
             kind: 'success',
             text: [
-              `本年月档骨架：${ensure.monthFile}`,
+              `本月月响骨架：${ensure.monthFile}`,
               monthLine,
               yearLine,
             ].join('\n'),

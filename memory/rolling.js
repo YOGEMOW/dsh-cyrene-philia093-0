@@ -2,7 +2,7 @@
  * 日 → 月 → 年 逐级整理（设计 §11，确定性部分）。
  *
  * 梦境的「析忆/固忆」负责 LLM 层的取舍；这里补上机器可保证的骨架：
- *  - 月档：上一个月有日档、且还没生成 月/YYYY-MM.md → 按五育主题汇总（不调 LLM）；
+ *  - 月响：上一个月有日档、且还没生成 月/YYYY-MM.md → 按五育主题汇总（不调 LLM）；
  *  - 年轮：跨年后补一份 年/YYYY.md 的「年轮定格」（月度索引 + 五育年检），
  *    已存在的年档（月度体检写入的）只追加，不覆盖。
  */
@@ -10,6 +10,7 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { atomicWrite, readTextSafe } from './store.js'
+import { absPath, monthRelPath, yearRelPath } from './paths.js'
 
 /** 本地日期前缀 YYYY-MM。 */
 export function ymOf(ms) {
@@ -25,7 +26,7 @@ export function prevMonth(now) {
   return ymOf(d.getTime())
 }
 
-/** 当前月档骨架（月末滚动时会被正式内容替换）。 */
+/** 当前月响骨架（月末滚动时会被正式内容替换）。 */
 export function buildMonthSkeleton(month) {
   return [
     '---',
@@ -35,23 +36,23 @@ export function buildMonthSkeleton(month) {
     'days: 0',
     '---',
     '',
-    `# ${month} · 月档`,
+    `# ${month} · 月响`,
     '',
-    '（本月进行中。月档由宿主在月末自动整理；平时可在本文件里补记。）',
+    '（本月进行中。月响由宿主在月末自动整理；平时可在本文件里补记。）',
     '',
   ].join('\n')
 }
 
 /**
  * 确保当前月/当前年的文件存在（幂等）。
- * 不覆盖已有文件；月档写 status: open 骨架，月末滚动时替换为正式月档。
+ * 不覆盖已有文件；月响写 status: open 骨架，月末滚动时替换为正式月响。
  */
 export function ensureCalendarDocs(root, now = Date.now()) {
   const d = new Date(now)
   const month = ymOf(now)
   const year = String(d.getFullYear())
-  const monthFile = join(root, '月', year, `${month}.md`)
-  const yearFile = join(root, '年', `${year}.md`)
+  const monthFile = absPath(root, monthRelPath(month))
+  const yearFile = absPath(root, yearRelPath(year))
   let createdMonth = false
   let createdYear = false
   if (existsSync(monthFile) !== true) {
@@ -81,18 +82,23 @@ export function groupByAxis(entries, perAxis = 6) {
   return out
 }
 
-/** 生成月档 Markdown。 */
+/** 生成月响 Markdown（status: final）。 */
 export function buildMonthDoc(month, entries) {
   const rows = entries.filter((e) => typeof e?.day === 'string' && e.day.startsWith(month))
   const groups = groupByAxis(rows)
+  const [year, monthNumber] = month.split('-')
   const lines = [
     '---',
     `month: ${month}`,
+    'status: final',
+    `thread: month:${month}`,
+    `source_days: 岁月涟漪/日档/${year}/${monthNumber}/`,
+    `source_dreams: 梦境/${year}/${monthNumber}/`,
     `entries: ${rows.length}`,
     `days: ${new Set(rows.map((e) => e.day)).size}`,
     '---',
     '',
-    `# ${month} · 月档`,
+    `# ${month} · 月响`,
     ''
   ]
   for (const axis of AXES) {
@@ -112,21 +118,90 @@ export function buildMonthDoc(month, entries) {
     lines.push(`| ${axis} | ${rows.filter((e) => e.axis === axis).length} |`)
   }
   lines.push('')
+  lines.push('## 来源（链式召回）')
+  lines.push(`- 日档：岁月涟漪/日档/${year}/${monthNumber}/`)
+  lines.push(`- 梦境：梦境/${year}/${monthNumber}/`)
+  lines.push(`- thread：month:${month}`)
+  lines.push('')
   return lines.join('\n')
 }
 
+/** 是否当月最后一天。 */
+export function isLastDayOfMonth(now = Date.now()) {
+  const d = new Date(now)
+  return d.getDate() === new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+}
+
+/** 是否当年最后一天（12-31）。 */
+export function isLastDayOfYear(now = Date.now()) {
+  const d = new Date(now)
+  return d.getMonth() === 11 && d.getDate() === 31
+}
+
+/** 最后一天 23:50 之后才自动整理（留出夜梦时间；错过则由次日 rollMonthly 补）。 */
+function inLastDayWindow(now) {
+  const d = new Date(now)
+  return isLastDayOfMonth(now) && d.getHours() === 23 && d.getMinutes() >= 50
+}
+
+/** 写指定月份的正式月响（补录/强制整理用）。 */
+export function writeMonth(root, month, entries) {
+  const rows = (entries ?? []).filter((e) => typeof e?.day === 'string' && e.day.startsWith(month))
+  const path = absPath(root, monthRelPath(month))
+  const ok = atomicWrite(path, buildMonthDoc(month, rows))
+  return { ok, month, entries: rows.length, path }
+}
+
 /**
- * 月档滚动：上个月有数据且月档不存在才写。
+ * 最后一天整理当月月响：把 open 骨架替换成 status: final。
+ * 错过最后一天时，次日 rollMonthly 会自动补上。
+ */
+export function rollCurrentMonth(root, entries, now = Date.now(), options = {}) {
+  const force = options.force === true
+  if (force !== true && inLastDayWindow(now) !== true) return { created: false, reason: 'not-last-day-window' }
+  const month = ymOf(now)
+  const rows = (entries ?? []).filter((e) => typeof e?.day === 'string' && e.day.startsWith(month))
+  const path = absPath(root, monthRelPath(month))
+  if (existsSync(path) === true) {
+    const existing = readTextSafe(path)
+    if (existing.includes('status: final') && force !== true) {
+      return { created: false, month, entries: rows.length, reason: 'exists-final' }
+    }
+  }
+  const ok = atomicWrite(path, buildMonthDoc(month, rows))
+  return { created: ok === true, month, entries: rows.length, path }
+}
+
+/** 最后一天整理当年年轮（只追加一次「年轮定格」）。 */
+export function finalizeYear(root, entries, now = Date.now(), options = {}) {
+  const force = options.force === true
+  const d = new Date(now)
+  const inWindow = isLastDayOfYear(now) && d.getHours() === 23 && d.getMinutes() >= 50
+  if (force !== true && inWindow !== true) return { created: false, reason: 'not-last-day-window' }
+  const year = String(new Date(now).getFullYear())
+  const rows = (entries ?? []).filter((e) => typeof e?.day === 'string' && e.day.startsWith(`${year}-`))
+  if (rows.length === 0 && force !== true) return { created: false, year, reason: 'empty' }
+  const file = absPath(root, yearRelPath(year))
+  const existing = existsSync(file) ? readTextSafe(file) : ''
+  if (existing.includes(`## 年轮定格 ${year}`) && force !== true) return { created: false, year, reason: 'exists' }
+  const section = buildYearSection(year, readYearMonths(root, year), rows)
+  const base = existing.trim() === '' ? `---\nyear: ${year}\n---\n\n# ${year} · 年轮\n` : `${existing.replace(/\s*$/, '')}\n`
+  const ok = atomicWrite(file, `${base}${section}`)
+  return { created: ok === true, year, path: file }
+}
+
+/**
+ * 月响滚动：上个月有数据且月响不存在才写。
  * @returns { created, path, month, entries }
  */
 export function rollMonthly(root, entries, now = Date.now()) {
   const month = prevMonth(now)
   const rows = (entries ?? []).filter((e) => typeof e?.day === 'string' && e.day.startsWith(month))
-  const path = join(root, '月', `${month.slice(0, 4)}`, `${month}.md`)
+  const path = absPath(root, monthRelPath(month))
   if (rows.length === 0) return { created: false, month, entries: 0, reason: 'empty' }
   if (existsSync(path) === true) {
     const existing = readTextSafe(path)
-    // 月初自动建的 status: open 骨架：月末用正式内容替换；已有正式月档/人工内容则不动。
+    // 月初自动建的 status: open 骨架：月末用正式内容替换；已有正式月响/人工内容则不动。
     if (existing.includes('status: open') !== true) {
       return { created: false, month, entries: rows.length, reason: 'exists' }
     }
@@ -149,22 +224,23 @@ export function buildYearSection(year, monthDocs, entries) {
     '### 月度索引',
     ''
   ]
-  if (months.length === 0) lines.push('- （无月档）')
+  if (months.length === 0) lines.push('- （无月响）')
   for (const [month, doc] of months) {
     const count = (doc.match(/^- \[I/gm) ?? []).length
-    lines.push(`- ${month}：月档 ${count} 条主题摘要`)
+    lines.push(`- ${month}：月响 ${count} 条主题摘要`)
   }
   lines.push('', '### 五育年检', '', '| 维度 | 条数 |', '|---|---|')
   for (const axis of AXES) lines.push(`| ${axis} | ${axes[axis]} |`)
   lines.push('', `联结密度：${rows.length === 0 ? 0 : (links / rows.length).toFixed(2)}｜条目 ${rows.length}`)
   lines.push('', '### 承卷', '', '- 这一年带我的是哪个模型/哪次换代：由外部记录补充。', '')
+  lines.push('### 来源（链式召回）', `- 月响：岁月涟漪/月响/${year}/`, `- 梦境：梦境/${year}/`, `- thread：year:${year}`, '')
   return lines.join('\n')
 }
 
-/** 收集上一年度的月档内容。 */
+/** 收集上一年度的月响内容。 */
 export function readYearMonths(root, year) {
   const out = {}
-  const dir = join(root, '月', year)
+  const dir = absPath(root, `岁月涟漪/月响/${year}`)
   let names = []
   try {
     names = readdirSync(dir)
@@ -188,7 +264,7 @@ export function rollYearly(root, entries, now = Date.now()) {
   const year = String(d.getFullYear() - 1)
   const rows = (entries ?? []).filter((e) => typeof e?.day === 'string' && e.day.startsWith(`${year}-`))
   if (rows.length === 0) return { created: false, reason: 'empty', year }
-  const file = join(root, '年', `${year}.md`)
+  const file = absPath(root, yearRelPath(year))
   const existing = existsSync(file) ? readTextSafe(file) : ''
   if (existing.includes(`## 年轮定格 ${year}`)) return { created: false, reason: 'exists', year }
   const doc = buildYearSection(year, readYearMonths(root, year), rows)
@@ -204,5 +280,7 @@ export function rollCalendars(root, entries, now = Date.now()) {
   const ensure = ensureCalendarDocs(root, now)
   const monthly = rollMonthly(root, entries, now)
   const yearly = rollYearly(root, entries, now)
-  return { ensure, monthly, yearly }
+  const currentMonth = rollCurrentMonth(root, entries, now)
+  const currentYear = finalizeYear(root, entries, now)
+  return { ensure, monthly, yearly, currentMonth, currentYear }
 }

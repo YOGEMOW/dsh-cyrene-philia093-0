@@ -13,6 +13,9 @@ import { nearEntries, entryLine, loadEntries } from './entries.js'
 import { search, tokenize, keywordScore } from './search.js'
 import { bucketEntries, allocateSchedule } from './scheduler.js'
 import { review } from './core.js'
+import { readTextSafe } from './store.js'
+import { DREAM_ROOT, MONTH_ROOT, YEAR_ROOT, absPath } from './paths.js'
+import { readdirSync } from 'node:fs'
 
 /** 每个会话的去重状态（有界 LRU）。 */
 const states = new Map()
@@ -55,7 +58,51 @@ export function sanitizeInject(text) {
     .trim()
 }
 
-/** 构造首轮快照（锚点 + 近况 + 准则 + 提示）。 */
+/** 从归档 Markdown 里摘几条主题/统计（保持注入简短）。 */
+function archiveExcerpt(text, limit = 500) {
+  const body = String(text ?? '')
+    .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n*/, '')
+    .replace(/^(?:# [^\n]*\n+)+/, '')
+    .trim()
+  const picked = body.split('\n').filter((line) => line.startsWith('## ') || line.startsWith('- ') || line.startsWith('|')).slice(0, 8).join('\n')
+  return (picked || body).slice(0, limit)
+}
+
+/** 最近的月响/年轮文件（不存在返回 null）。 */
+function latestArchive(root, kind) {
+  const base = absPath(root, kind === 'month' ? MONTH_ROOT : YEAR_ROOT)
+  try {
+    const names = readdirSync(base, { recursive: true })
+      .filter((name) => typeof name === 'string' && name.endsWith('.md'))
+      .sort()
+    const last = names[names.length - 1]
+    if (last === undefined) return null
+    const file = `${base}/${last.replace(/\\/g, '/')}`
+    const text = readTextSafe(file)
+    return text.trim() === '' ? null : { file, text }
+  } catch {
+    return null
+  }
+}
+
+/** 最近一篇夜梦（按日期取最新）。 */
+function latestDream(root) {
+  const base = absPath(root, DREAM_ROOT)
+  try {
+    const names = readdirSync(base, { recursive: true })
+      .filter((name) => typeof name === 'string' && /^\d{4}-\d{2}-\d{2}\.md$/.test(name.split(/[\\/]/).pop() ?? ''))
+      .sort()
+    const last = names[names.length - 1]
+    if (last === undefined) return null
+    const file = `${base}/${last.replace(/\\/g, '/')}`
+    const text = readTextSafe(file)
+    return text.trim() === '' ? null : { file, text }
+  } catch {
+    return null
+  }
+}
+
+/** 构造首轮快照（锚点 + 近况 + 梦境/月响/年轮 + 准则 + 提示）。 */
 export function buildFirstSnapshot(root, options = {}) {
   const now = Date.now()
   const anchors = readAnchors(root)
@@ -68,11 +115,32 @@ export function buildFirstSnapshot(root, options = {}) {
     lines.push('【一页永恒·近】')
     for (const e of near) lines.push(entryLine(e))
   }
+  const dream = latestDream(root)
+  if (dream !== null) {
+    lines.push('')
+    lines.push('【一页永恒·梦境】（最近一篇夜梦；细读用 memory_fs）')
+    lines.push(`- ${dream.file.replace(/\\/g, '/')}`)
+    lines.push(archiveExcerpt(dream.text, 320))
+  }
+  const month = latestArchive(root, 'month')
+  if (month !== null) {
+    lines.push('')
+    lines.push('【一页永恒·月响】（比日档更大的尺度；细读用 memory_fs）')
+    lines.push(`- ${month.file.replace(/\\/g, '/')}`)
+    lines.push(archiveExcerpt(month.text, 380))
+  }
+  const year = latestArchive(root, 'year')
+  if (year !== null) {
+    lines.push('')
+    lines.push('【一页永恒·年轮】（最大尺度；细读用 memory_fs）')
+    lines.push(`- ${year.file.replace(/\\/g, '/')}`)
+    lines.push(archiveExcerpt(year.text, 320))
+  }
   lines.push('')
   lines.push(GUIDE_TEXT)
   lines.push(HINT_TEXT)
   let text = sanitizeInject(lines.join('\n'))
-  const max = options.maxChars ?? 1400
+  const max = options.maxChars ?? 2200
   if (text.length > max) text = `${text.slice(0, max - 16)}\n…（已截断）`
   return {
     text,

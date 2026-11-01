@@ -61,7 +61,7 @@ export function apply(ctx, rawConfig) {
     if (tree?.ok !== true) {
       ctx?.logger?.warn?.(`[${name}] 记忆目录初始化不完整：${(tree?.errors ?? []).join('；') || '未知原因'}`)
     }
-    // 当前月/年文件随装随建：先有骨架，月底/跨年再滚成正式月档/年轮。
+    // 当前月响/年轮文件随装随建：先有骨架，最后一天再滚成正式月响/年轮。
     try {
       ensureCalendarDocs(service.root)
     } catch (error) {

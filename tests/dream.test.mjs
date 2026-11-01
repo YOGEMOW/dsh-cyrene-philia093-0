@@ -120,7 +120,7 @@ test('昔涟会话：挂每日任务 → 标记触发注入六阶段规程 → t
     onEvent({ id: 'sess-1' }, { type: 'turn/end', data: { reason: 'completed' } })
     assert.equal(service.dream.status().running, false)
     assert.equal(dreamedToday(loadDreamState(root), Date.now(), { time: '23:30:00', timeZone: 'Asia/Shanghai' }), true)
-    assert.equal(fs.existsSync(path.join(root, '梦', `${new Date().toISOString().slice(0, 10)}.md`)) || true, true)
+    assert.equal(fs.existsSync(path.join(root, '梦境', dayOf().slice(0, 4), dayOf().slice(5, 7), `${dayOf()}.md`)), true)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
@@ -239,7 +239,7 @@ test('无梦志时自动摘要；非当前会话的标记被丢弃', async () =>
     const triggered = await preStep({ agent: current }, async () => ({ kind: 'enter', messages: [markerMessage()] }))
     assert.equal(triggered.messages.length, 2)
     ctx.handlers.get('session/event')({ id: 's-current' }, { type: 'turn/end', data: { reason: 'completed' } })
-    const journal = fs.readFileSync(path.join(root, '梦', `${dayOf()}.md`), 'utf8')
+    const journal = fs.readFileSync(path.join(root, '梦境', dayOf().slice(0, 4), dayOf().slice(5, 7), `${dayOf()}.md`), 'utf8')
     assert.match(journal, /本次夜梦没有产出/)
     assert.equal(journal.includes('修复了设置面板排版'), false)
   } finally {

@@ -101,7 +101,7 @@ export function createMemoryTools(service) {
 
   const memoryDreamJournal = stringTool({
     name: 'memory_dream_journal',
-    description: '写今晚的梦志（梦/YYYY-MM-DD.md，≤400 字）。只在夜梦六阶段收尾时调用；同一天重复调用会追加「补记」，不覆盖。',
+    description: '写今晚的梦志（梦境/YYYY/MM/YYYY-MM-DD.md，≤400 字）。只在夜梦六阶段收尾时调用；同一天重复调用会追加「补记」，不覆盖。',
     parameters: {
       type: 'object',
       properties: {
@@ -117,7 +117,7 @@ export function createMemoryTools(service) {
       const now = Number.isFinite(parsed) ? parsed : Date.now()
       const result = writeDreamJournal(root, text, now)
       return result.ok === true
-        ? `梦志已写入：梦/${dayOf(now)}.md`
+        ? `梦志已写入：梦境/${dayOf(now).slice(0, 4)}/${dayOf(now).slice(5, 7)}/${dayOf(now)}.md`
         : `梦志写入失败：${result.reason ?? '未知原因'}`
     },
   })

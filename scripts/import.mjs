@@ -34,6 +34,7 @@ import {
 } from '../memory/store.js'
 import { hashText, normalizeEntry } from '../memory/parse.js'
 import { personaHash, ensureVolumePersonaHash } from '../memory/persona.js'
+import { migrateLayout } from './migrate-layout.mjs'
 
 /** 递归复制：目标已存在则不覆盖。 */
 function copyTree(src, dst, rel = '') {

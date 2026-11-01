@@ -11,6 +11,7 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { readDay, writeDay, atomicWrite, readJSON, writeJSON } from './store.js'
 import { join } from 'node:path'
+import { absPath, dayRelPath, dreamRelPath } from './paths.js'
 
 /** 提示词标记：schedule 投递的短提示与 /dream 手动触发都用它识别。 */
 export const DREAM_MARKER = '[cyrene-dream]'
@@ -162,7 +163,7 @@ export function buildDreamPrompt(root, options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now()
   const day = dayOf(now)
   const [y, m] = day.split('-')
-  const dayPath = `日/${y}/${m}/${day}.md`
+  const dayPath = dayRelPath(day)
   const sessions = Array.isArray(options.sessions) ? options.sessions.slice(0, 12) : []
   const sessionBlock = sessions.length === 0
     ? ''
@@ -207,7 +208,7 @@ ${sessionBlock}${digestBlock}
 3) 联忆：对每条新记忆用 memory_search 找相关旧条目；重复的用 memory_update 合并（旧条 status=archived）；建立 0–5 条联结，用 memory_link（type：因果/相似/对立/时序/归属）。
    顺手修缺损：用 memory_search 检查有没有 keywords 为空的旧条目（多见于迁移进来的），有就用 memory_update 补 3–5 个关键词（挑「用户以后可能提到什么词」）。
 4) 固忆：检查四问锚点是否需要修订——只依据今天有证据的事，最多改 2 处，用 memory_anchor（mode=append 或 replace）。「体」的基座不许改，要改只能追加新卷。
-   月档/年轮由宿主自动生成：**不要用 memory_fs 写 月/ 或 年/**；确需补充就写进余页草稿，等下次滚动时人工挪。
+   月响/年轮由宿主自动生成：**不要用 memory_fs 写 岁月涟漪/月响 或 岁月涟漪/年轮**；确需补充就写进余页草稿，等下次滚动时人工挪。
 5) 忘忆：把已完成、已过时、低价值的条目用 memory_forget mode=archive 归档（最多 5 条）；**不许**用 delete（真忘只能由用户发起）。
 6) 记梦：调 memory_dream_journal 写今晚的梦志（≤400 字）：统计（新增/合并/联结/归档）、锚点改动 diff、五育体检（德智体美劳各一句）、以及「本夜没有记录到的事」一段。
 
@@ -222,14 +223,14 @@ ${sessionBlock}${digestBlock}
 - 今天日期：${day}`
 }
 
-/** 写梦志（梦/YYYY-MM-DD.md）；同一天第二次整理时追加「补记」，不覆盖早先那份。 */
+/** 写梦志（梦境/YYYY/MM/YYYY-MM-DD.md）；同一天第二次整理时追加「补记」，不覆盖早先那份。 */
 export function writeDreamJournal(root, text, now = Date.now()) {
   const day = dayOf(now)
   const raw = typeof text === 'string' ? text.trim() : ''
   // 去掉模型/旧版本自带的一级标题，只保留文件自己的「日期 · 夜梦」标题
   const body = raw.replace(/^(?:#{1,6}[^\n]*\n+\s*)+/, '').trim()
   if (body === '') return { ok: false, reason: 'empty' }
-  const path = join(root, '梦', `${day}.md`)
+  const path = absPath(root, dreamRelPath(day))
   const header = `# ${day} · 夜梦\n\n## ${day} 梦志\n\n`
   let content = `${header}${body}\n`
   if (existsSync(path)) {

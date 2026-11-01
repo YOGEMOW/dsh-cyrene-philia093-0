@@ -191,7 +191,7 @@ test('宿主：提供 cyreneMemory 服务并在 DSH_HOME 下建树', () => {
     assert.ok(record, '必须 provide cyreneMemory')
     assert.equal(record.value.root, path.join(path.resolve(home), 'cyrene-philia093-0'))
     assert.equal(fs.existsSync(path.join(record.value.root, '元')), true)
-    assert.equal(fs.existsSync(path.join(record.value.root, '日')), true)
+    assert.equal(fs.existsSync(path.join(record.value.root, '岁月涟漪', '日档')), true)
     assert.equal(record.value.config.injectPresets.includes('chat'), true)
   } finally {
     if (prev === undefined) delete process.env.DSH_HOME

@@ -20,7 +20,7 @@ import {
 } from '../memory/parse.js';
 
 const DAY = '2026-10-18';
-const REL_PATH = '日/2026/10/2026-10-18.md';
+const REL_PATH = '岁月涟漪/日档/2026/10/2026-10-18.md';
 /** 2026-10-18 14:02:01 本地时间 */
 const TS = new Date(2026, 9, 18, 14, 2, 1, 0).getTime();
 
@@ -177,7 +177,7 @@ test('normalizeEntry：缺省值符合设计 §4.2（I=4 S=1 axis=无），且�
   assert.equal(fromNothing.S, 1);
   assert.equal(fromNothing.axis, '无');
   assert.match(fromNothing.day, /^\d{4}-\d{2}-\d{2}$/);
-  assert.match(fromNothing.path, /^日\/\d{4}\/\d{2}\/\d{4}-\d{2}-\d{2}\.md$/);
+  assert.match(fromNothing.path, /^岁月涟漪\/日档\/\d{4}\/\d{2}\/\d{4}-\d{2}-\d{2}\.md$/);
 });
 
 test('normalizeEntry：越界数值与非法枚举回落到合法值', () => {

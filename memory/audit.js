@@ -9,6 +9,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { atomicWrite, readJSON, readTextSafe } from './store.js'
+import { absPath, yearRelPath } from './paths.js'
 
 /** 审计文件路径。 */
 export function auditPath(root) {
@@ -123,7 +124,7 @@ export function monthlyAudit(root, entries, now = Date.now()) {
   }
   const density = rows.length === 0 ? 0 : links / rows.length
   const year = month.slice(0, 4)
-  const file = join(root, '年', `${year}.md`)
+  const file = absPath(root, yearRelPath(year))
   const prev = existsSync(file) ? readTextSafe(file) : ''
   const block = [
     '',

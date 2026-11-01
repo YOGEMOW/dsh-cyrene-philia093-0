@@ -18,6 +18,7 @@ import { join } from 'node:path'
 import { readJSON, writeJSON } from './store.js'
 import { hashText } from './parse.js'
 import { listFreeArea, planFreeSync, renderFreeContent } from './freearea.js'
+import { DAY_ROOT, DREAM_ROOT, MONTH_ROOT, YEAR_ROOT, dayRelPath } from './paths.js'
 
 /** 默认配置。 */
 export const SIYUAN_DEFAULTS = {
@@ -123,6 +124,60 @@ export async function ensureDoc(cfg, notebookId, hpath, markdown = '') {
   return { id: data, created: true }
 }
 
+/** 小睡（父文档刚建时思源 metadata 需要一点时间就绪）。 */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * 确保 hpath 的每一级父文档都存在。
+ * 思源 createDocWithMd 创建深层路径时会异步建父级；直接建深层文档常报
+ * `document metadata is not ready`，必须先逐级建父文档并留出就绪时间。
+ */
+export async function ensureParentDocs(cfg, notebookId, hpath, options = {}) {
+  const parts = String(hpath ?? '').split('/').filter(Boolean)
+  if (parts.length <= 1) return { ok: true, created: [] }
+  const delays = Array.isArray(options.delays) ? options.delays : [80, 200, 500]
+  const created = []
+  for (let index = 1; index < parts.length; index += 1) {
+    const parent = `/${parts.slice(0, index).join('/')}`
+    if ((await findDocId(cfg, notebookId, parent)) !== null) continue
+    let lastError = null
+    for (const delay of delays) {
+      try {
+        const result = await ensureDoc(cfg, notebookId, parent, `# ${parts[index - 1]}\n`)
+        if (result.created === true) created.push(parent)
+        lastError = null
+        break
+      } catch (error) {
+        lastError = error
+        await sleep(delay)
+      }
+    }
+    if (lastError !== null) throw lastError
+  }
+  return { ok: true, created }
+}
+
+/** 带重试的 createDocWithMd（用于刚建完父级的深层文档）。 */
+async function createDocResilient(cfg, notebookId, hpath, markdown, options = {}) {
+  const delays = Array.isArray(options.delays) ? options.delays : [100, 300, 700]
+  let lastError = null
+  for (const delay of delays) {
+    try {
+      return await api(cfg, '/api/filetree/createDocWithMd', {
+        notebook: notebookId,
+        path: hpath,
+        markdown
+      })
+    } catch (error) {
+      lastError = error
+      await sleep(delay)
+    }
+  }
+  throw lastError ?? new Error('createDocWithMd failed')
+}
+
 /** 按属性查块（幂等兜底）。 */
 async function findBlockByMemoryId(cfg, entryId) {
   const stmt = `SELECT block_id FROM attributes WHERE name='custom-memory-id' AND value='${entryId.replace(/'/g, "''")}' LIMIT 3`
@@ -188,11 +243,11 @@ export function saveMirrorState(root, state) {
   }
 }
 
-/** 文档 hpath：/一页永恒/日/2026/10/2026-10-18 */
+/** 文档 hpath：/一页永恒/岁月涟漪/日档/2026/10/2026-10-18 */
 export function docHPath(cfg, entry) {
   const day = typeof entry?.day === 'string' ? entry.day : new Date().toISOString().slice(0, 10)
-  const [y, m] = day.split('-')
-  return `${cfg.rootHPath}/日/${y}/${m}/${day}`
+  const rel = dayRelPath(day)
+  return `${cfg.rootHPath}/${rel.replace(/\.md$/, '')}`
 }
 
 /** 月档/年档的思源 hpath。 */
@@ -200,9 +255,9 @@ export function archiveHPath(cfg, kind, id) {
   const value = String(id ?? '')
   if (kind === 'month') {
     const year = value.slice(0, 4)
-    return `${cfg.rootHPath}/月/${year}/${value} · 月档`
+    return `${cfg.rootHPath}/${MONTH_ROOT}/${year}/${value} · 月响`
   }
-  return `${cfg.rootHPath}/年/${value} · 年轮`
+  return `${cfg.rootHPath}/${YEAR_ROOT}/${value} · 年轮`
 }
 
 /** 月档/年档正文：去掉 YAML frontmatter 与一级标题（标题由思源文档名承担）。 */
@@ -248,6 +303,7 @@ export async function syncEntries(cfg, root, entries) {
       const hpath = docHPath(cfg, entry)
       let docId = state.docs[hpath]
       if (typeof docId !== 'string' || docId === '') {
+        await ensureParentDocs(cfg, notebook.id, hpath)
         const doc = await ensureDoc(cfg, notebook.id, hpath)
         docId = doc.id
         state.docs[hpath] = docId
@@ -576,18 +632,21 @@ export async function syncJournal(cfg, root, day, text) {
   }
   if (notebook === null) return { ok: false, reason: `未找到笔记本「${cfg.notebook}」` }
   state.notebookId = notebook.id
-  const hpath = `${cfg.rootHPath}/梦/${day} · 夜梦`
-  const legacyHpath = `${cfg.rootHPath}/梦/${day}`
+  const [dreamYear, dreamMonth] = day.split('-')
+  const hpath = `${cfg.rootHPath}/${DREAM_ROOT}/${dreamYear}/${dreamMonth}/${day} · 夜梦`
+  const legacyHpaths = [`${cfg.rootHPath}/梦/${day} · 夜梦`, `${cfg.rootHPath}/梦/${day}`]
   try {
-    // 清掉 v1 的旧文档（重复标题那份）
-    const legacyId = (typeof state.docs[legacyHpath] === 'string' ? state.docs[legacyHpath] : '') || (await findDocId(cfg, notebook.id, legacyHpath)) || ''
-    if (legacyId !== '') {
-      try {
-        await removeDoc(cfg, legacyId)
-      } catch {
-        /* 已被用户删掉也无妨 */
+    // 清掉 0.3.x 与 v1 的旧文档（旧平铺梦境路径）
+    for (const legacyHpath of legacyHpaths) {
+      const legacyId = (typeof state.docs[legacyHpath] === 'string' ? state.docs[legacyHpath] : '') || (await findDocId(cfg, notebook.id, legacyHpath)) || ''
+      if (legacyId !== '') {
+        try {
+          await removeDoc(cfg, legacyId)
+        } catch {
+          /* 已被用户删掉也无妨 */
+        }
+        delete state.docs[legacyHpath]
       }
-      delete state.docs[legacyHpath]
     }
     const hash = hashText(body)
     state.journals = state.journals !== null && typeof state.journals === 'object' ? state.journals : {}
@@ -606,11 +665,8 @@ export async function syncJournal(cfg, root, day, text) {
       }
       docId = ''
     }
-    const createdId = await api(cfg, '/api/filetree/createDocWithMd', {
-      notebook: notebook.id,
-      path: hpath,
-      markdown: body
-    })
+    await ensureParentDocs(cfg, notebook.id, hpath)
+    const createdId = await createDocResilient(cfg, notebook.id, hpath, body)
     if (typeof createdId !== 'string' || createdId === '') throw new Error('createDocWithMd 未返回文档 id')
     state.docs[hpath] = createdId
     state.journals[day] = { hash, docId: createdId, synced_at: Date.now() }
@@ -663,11 +719,8 @@ export async function syncArchiveDoc(cfg, root, kind, id, text) {
       }
       docId = ''
     }
-    const createdId = await api(cfg, '/api/filetree/createDocWithMd', {
-      notebook: notebook.id,
-      path: hpath,
-      markdown: body
-    })
+    await ensureParentDocs(cfg, notebook.id, hpath)
+    const createdId = await createDocResilient(cfg, notebook.id, hpath, body)
     if (typeof createdId !== 'string' || createdId === '') throw new Error('createDocWithMd 未返回文档 id')
     state.docs[hpath] = createdId
     state.archives[key] = { hash, docId: createdId, synced_at: Date.now() }

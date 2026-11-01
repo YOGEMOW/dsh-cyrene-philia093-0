@@ -21,8 +21,10 @@ function tmpRoot() {
 
 test('hpath → 日期 / 梦志日期', () => {
   assert.equal(dayFromHPath('/一页永恒/日/2026/10/2026-10-18'), '2026-10-18')
+  assert.equal(dayFromHPath('/一页永恒/岁月涟漪/日档/2026/10/2026-10-18'), '2026-10-18')
   assert.equal(dayFromHPath('/一页永恒/日/2026/10'), null)
   assert.equal(dayFromJournalHPath('/一页永恒/梦/2026-10-18 · 夜梦'), '2026-10-18')
+  assert.equal(dayFromJournalHPath('/一页永恒/梦境/2026/10/2026-10-18 · 夜梦'), '2026-10-18')
   assert.equal(dayFromJournalHPath('/一页永恒/梦'), null)
 })
 
@@ -56,7 +58,7 @@ test('回灌条目：去重、跳过已存在、写回日档', () => {
     const r2 = restoreEntries(root, [{ day: '2026-10-18', time: '08:00', axis: '智', I: 5, text: '第一条记忆', quote: '' }], { now })
     assert.equal(r2.added, 0)
     assert.equal(r2.skipped, 1)
-    const file = join(root, '日', '2026', '10', '2026-10-18.md')
+    const file = join(root, '岁月涟漪', '日档', '2026', '10', '2026-10-18.md')
     assert.match(readFileSync(file, 'utf8'), /第一条记忆/)
   } finally {
     rmSync(join(root, '..'), { recursive: true, force: true })
@@ -87,8 +89,8 @@ test('回灌梦志：本地缺失才写', () => {
     ensureTree(root)
     const r = restoreJournals(root, [{ hpath: '/一页永恒/梦/2026-10-18 · 夜梦', day: '2026-10-18', markdown: '新增 2 条。' }])
     assert.equal(r.restored, 1)
-    assert.ok(existsSync(join(root, '梦', '2026-10-18.md')))
-    assert.match(readFileSync(join(root, '梦', '2026-10-18.md'), 'utf8'), /新增 2 条/)
+    assert.ok(existsSync(join(root, '梦境', '2026', '10', '2026-10-18.md')))
+    assert.match(readFileSync(join(root, '梦境', '2026', '10', '2026-10-18.md'), 'utf8'), /新增 2 条/)
     const r2 = restoreJournals(root, [{ hpath: '/一页永恒/梦/2026-10-18 · 夜梦', day: '2026-10-18', markdown: '别的' }])
     assert.equal(r2.restored, 0)
   } finally {

@@ -15,6 +15,7 @@ import { loadEntries } from '../memory/entries.js'
 import { readAnchors } from '../memory/anchor.js'
 import { monthlyAudit } from '../memory/audit.js'
 import { rollCalendars } from '../memory/rolling.js'
+import { runWatchdog } from '../memory/watchdog.js'
 import { snapshotRoot } from '../memory/backup.js'
 import { loadDreamState, saveDreamState } from '../memory/dream.js'
 import {
@@ -28,6 +29,7 @@ import {
   syncJournal,
 } from '../memory/siyuan.js'
 import { readTextSafe } from '../memory/store.js'
+import { absPath, DREAM_ROOT, MONTH_ROOT, YEAR_ROOT } from '../memory/paths.js'
 
 const DEFAULT_INTERVAL_MINUTES = 30
 const ENTRY_SYNC_DAYS = 3
@@ -61,13 +63,15 @@ export function installMaintenance(ctx, service, rawSiyuan) {
 
   let lastMirrorAt = 0
   let lastMirrorError = ''
+  let lastWatchdog = null
 
-  /** 本地所有月档/年档（供思源镜像）。 */
+  /** 本地所有月响/年轮（供思源镜像）。 */
   const listArchiveDocs = () => {
     const items = []
     try {
-      for (const year of readdirSync(join(root, '月'))) {
-        const dir = join(root, '月', year)
+      const monthRoot = absPath(root, MONTH_ROOT)
+      for (const year of readdirSync(monthRoot)) {
+        const dir = join(monthRoot, year)
         for (const name of readdirSync(dir)) {
           if (!/^\d{4}-\d{2}\.md$/.test(name)) continue
           const text = readTextSafe(join(dir, name))
@@ -75,18 +79,40 @@ export function installMaintenance(ctx, service, rawSiyuan) {
         }
       }
     } catch {
-      /* 月目录不存在 */
+      /* 月响目录不存在 */
     }
     try {
-      for (const name of readdirSync(join(root, '年'))) {
+      const yearRoot = absPath(root, YEAR_ROOT)
+      for (const name of readdirSync(yearRoot)) {
         if (!/^\d{4}\.md$/.test(name)) continue
-        const text = readTextSafe(join(root, '年', name))
+        const text = readTextSafe(join(yearRoot, name))
         if (text.trim() !== '') items.push({ kind: 'year', id: name.replace(/\.md$/, ''), text })
       }
     } catch {
-      /* 年目录不存在 */
+      /* 年轮目录不存在 */
     }
     return items
+  }
+
+  /** 本地梦境文件（按年月日分级）。 */
+  const listDreamDocs = () => {
+    const items = []
+    try {
+      const dreamRoot = absPath(root, DREAM_ROOT)
+      for (const year of readdirSync(dreamRoot)) {
+        const yearDir = join(dreamRoot, year)
+        for (const month of readdirSync(yearDir)) {
+          const monthDir = join(yearDir, month)
+          for (const name of readdirSync(monthDir)) {
+            if (!/^\d{4}-\d{2}-\d{2}\.md$/.test(name)) continue
+            items.push({ day: name.replace(/\.md$/, ''), path: join(monthDir, name) })
+          }
+        }
+      }
+    } catch {
+      /* 梦境目录不存在 */
+    }
+    return items.sort((a, b) => a.day.localeCompare(b.day))
   }
 
   /** 思源镜像：锚点 + 近 3 天条目 + 近 7 天梦志 + 余页。 */
@@ -102,19 +128,14 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       if (recent.length > 0) await syncEntries(siyuan, root, recent)
       const anchors = readAnchors(root)
       if (anchors !== undefined) await syncAnchors(siyuan, root, anchors)
-      const journalDir = join(root, '梦')
       try {
-        const names = readdirSync(journalDir)
-          .filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name))
-          .sort()
-          .slice(-JOURNAL_SYNC_DAYS)
-        for (const name of names) {
-          const day = name.replace(/\.md$/, '')
-          const text = readTextSafe(join(journalDir, name))
-          if (text.trim() !== '') await syncJournal(siyuan, root, day, text)
+        const docs = listDreamDocs().slice(-JOURNAL_SYNC_DAYS)
+        for (const item of docs) {
+          const text = readTextSafe(item.path)
+          if (text.trim() !== '') await syncJournal(siyuan, root, item.day, text)
         }
       } catch {
-        /* 梦目录不存在/读失败忽略 */
+        /* 梦境目录不存在/读失败忽略 */
       }
       try {
         await syncFreeArea(siyuan, root)
@@ -198,8 +219,19 @@ export function installMaintenance(ctx, service, rawSiyuan) {
     } catch (error) {
       metaLog('维护.log', `audit/roll failed ${error instanceof Error ? error.message : String(error)}`)
     }
+    let watchdog = null
+    try {
+      watchdog = runWatchdog(root)
+      lastWatchdog = watchdog
+      if (watchdog.ok !== true) {
+        const failed = watchdog.checks.filter((check) => check.ok !== true).map((check) => check.name).join('；')
+        metaLog('看门狗.log', `warn ${failed}`)
+      }
+    } catch (error) {
+      metaLog('看门狗.log', `failed ${error instanceof Error ? error.message : String(error)}`)
+    }
     metaLog('维护.log', `tick reason=${reason} mirror=${mirror.ok === true} backup=${backup.ok === true} ${Date.now() - started}ms`)
-    return { mirror, backup, monthly, rolling }
+    return { mirror, backup, monthly, rolling, watchdog }
   }
 
   /** 写后实时同步：防抖合并，最多等 `debounceMs`（默认 1500ms）。 */
@@ -258,6 +290,7 @@ export function installMaintenance(ctx, service, rawSiyuan) {
         backup: { enabled: cfg?.backup?.enabled === true, snapshotHour: cfg?.backup?.snapshotHour, keep: cfg?.backup?.keep, intervalMinutes: cfg?.backup?.intervalMinutes },
         lastMirrorAt,
         lastMirrorError,
+        watchdog: lastWatchdog,
       }
     },
   }

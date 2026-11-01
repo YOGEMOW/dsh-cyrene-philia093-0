@@ -66,7 +66,7 @@ test('月度五育体检：上月有数据才写，且只写一次', () => {
     const first = monthlyAudit(root, entries, now)
     assert.equal(first.ok, true)
     assert.equal(first.rows, 2)
-    const file = join(root, '年', '2026.md')
+    const file = join(root, '岁月涟漪', '年轮', '2026.md')
     assert.ok(existsSync(file))
     assert.match(readFileSync(file, 'utf8'), /五育体检 2026-10/)
     const second = monthlyAudit(root, entries, now + 1000)

@@ -9,6 +9,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { DAY_ROOT } from './paths.js'
 import { atomicWrite } from './store.js'
 import { parseDay, hashText } from './parse.js'
 
@@ -24,7 +25,7 @@ export function indexPath(root) {
 /** 递归收集日档文件：rel（posix）→ { abs, mtime, size, day }。 */
 export function dayFiles(root) {
   const out = {}
-  const base = join(root, '日')
+  const base = join(root, ...DAY_ROOT.split('/'))
   const walk = (dir, prefix) => {
     let entries = []
     try {

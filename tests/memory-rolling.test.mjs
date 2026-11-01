@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { ensureTree } from '../memory/store.js'
-import { rollMonthly, rollYearly, rollCalendars, buildMonthDoc, ensureCalendarDocs } from '../memory/rolling.js'
+import { rollMonthly, rollYearly, rollCalendars, buildMonthDoc, ensureCalendarDocs, rollCurrentMonth, finalizeYear } from '../memory/rolling.js'
 
 function tmpRoot() {
   return join(mkdtempSync(join(tmpdir(), 'ope-roll-')), 'cyrene-philia093-0')
@@ -35,10 +35,10 @@ test('月档：上月有数据才生成，重复调用不覆盖', () => {
     const first = rollMonthly(root, entries, now)
     assert.equal(first.created, true)
     assert.equal(first.month, '2026-10')
-    const file = join(root, '月', '2026', '2026-10.md')
+    const file = join(root, '岁月涟漪', '月响', '2026', '2026-10.md')
     assert.ok(existsSync(file))
     const text = readFileSync(file, 'utf8')
-    assert.match(text, /# 2026-10 · 月档/)
+    assert.match(text, /# 2026-10 · 月响/)
     assert.match(text, /主题：德（1 条）/)
     assert.match(text, /博物馆项目/)
     assert.equal(text.includes('本月条目'), false)
@@ -75,7 +75,7 @@ test('年轮：跨年后对上年追加一次定格，幂等', () => {
     ]
     const first = rollYearly(root, entries, now)
     assert.equal(first.created, true)
-    const file = join(root, '年', '2025.md')
+    const file = join(root, '岁月涟漪', '年轮', '2025.md')
     assert.ok(existsSync(file))
     const text = readFileSync(file, 'utf8')
     assert.match(text, /# 2025 · 年轮/)
@@ -112,7 +112,7 @@ test('rollCalendars：一次调用同时尝试月/年', () => {
     assert.equal(r.monthly.month, '2025-12')
     assert.equal(r.monthly.created, true)
     assert.equal(r.yearly.created, true)
-    assert.ok(buildMonthDoc('2025-12', entries).includes('# 2025-12 · 月档'))
+    assert.ok(buildMonthDoc('2025-12', entries).includes('# 2025-12 · 月响'))
   } finally {
     rmSync(join(root, '..'), { recursive: true, force: true })
   }
@@ -125,7 +125,7 @@ test('月初自动建骨架，月末滚动用正式月档替换', () => {
     const oct = new Date(2026, 9, 5, 10, 0, 0).getTime()
     const made = ensureCalendarDocs(root, oct)
     assert.equal(made.createdMonth, true)
-    const file = join(root, '月', '2026', '2026-10.md')
+    const file = join(root, '岁月涟漪', '月响', '2026', '2026-10.md')
     assert.match(readFileSync(file, 'utf8'), /status: open/)
 
     const nov = new Date(2026, 10, 3, 4, 0, 0).getTime()
@@ -146,8 +146,30 @@ test('ensureCalendarDocs：当前月/年文件幂等创建', () => {
     const now = new Date(2026, 10, 3, 4, 0, 0).getTime()
     ensureCalendarDocs(root, now)
     ensureCalendarDocs(root, now)
-    assert.ok(existsSync(join(root, '月', '2026', '2026-11.md')))
-    assert.ok(existsSync(join(root, '年', '2026.md')))
+    assert.ok(existsSync(join(root, '岁月涟漪', '月响', '2026', '2026-11.md')))
+    assert.ok(existsSync(join(root, '岁月涟漪', '年轮', '2026.md')))
+  } finally {
+    rmSync(join(root, '..'), { recursive: true, force: true })
+  }
+})
+test('最后一天：月响写 status: final；年轮追加定格', () => {
+  const root = tmpRoot()
+  try {
+    ensureTree(root)
+    const monthEnd = new Date(2026, 9, 31, 23, 51, 0).getTime()
+    const entries = [entry('2026-10-02', { text: '十月的事' })]
+    const month = rollCurrentMonth(root, entries, monthEnd)
+    assert.equal(month.created, true)
+    const monthFile = join(root, '岁月涟漪', '月响', '2026', '2026-10.md')
+    assert.match(readFileSync(monthFile, 'utf8'), /status: final/)
+    assert.match(readFileSync(monthFile, 'utf8'), /thread: month:2026-10/)
+    assert.match(readFileSync(monthFile, 'utf8'), /来源（链式召回）/)
+
+    const yearEnd = new Date(2026, 11, 31, 23, 51, 0).getTime()
+    const year = finalizeYear(root, entries, yearEnd)
+    assert.equal(year.created, true)
+    assert.match(readFileSync(join(root, '岁月涟漪', '年轮', '2026.md'), 'utf8'), /## 年轮定格 2026/)
+    assert.match(readFileSync(join(root, '岁月涟漪', '年轮', '2026.md'), 'utf8'), /thread：year:2026/)
   } finally {
     rmSync(join(root, '..'), { recursive: true, force: true })
   }

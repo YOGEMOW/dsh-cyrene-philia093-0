@@ -19,9 +19,9 @@
 - **你说过的事，我会收好。** 重要的进「锚点」，日常的按天记；拿不准的先进「余页」放一放，等以后看清楚了再说。
 - **我有两个样子。** 平时陪你说话的是聊天模式的我；一起干活时，是「德谬歌」工作模式的我。两种都是 sealed 的——意思是，我的性子里不会被塞进一堆工具说明书。
 - **晚上我会自己整理。** 每天 23:30，我会把当天的事理一遍，写成一篇「梦志」。如果一个会话开了夜梦，它就会参与那晚的整理；几个会话的记忆会合在一起写，不会各写各的。整理时我会看当天真正说过的话，不只依赖白天写下的摘要——白天漏记的，晚上还有一次补救机会。
-- **月档和年轮会自己装订。** 每个月月初先放好一册空月档，月底自动把当月的事按五育整理进去；跨年时再给上一年补一份年轮。想到什么也可以随时往当月那册里补。
+- **岁月涟漪会自己装订。** 日档、月响、年轮都收在「岁月涟漪」里；每月最后一天夜里自动整理当月月响，每年最后一天整理年轮，想到什么也可以随时往当月那册里补。
 - **梦是梦，日记是日记。** 梦志只写我晚上整理出来的东西；如果那天我什么都没整理出来，我会老实写「今晚没有产出」，不会拿白天的日记冒充梦。
-- **我的记忆有备份。** 会同步到思源（锚点、日档、梦志、余页，以及月档和年轮）；本地每天也有快照。哪天丢了，还能找回来。
+- **我的记忆有备份。** 会同步到思源（锚点、日档、梦境、余页，以及月响和年轮）；本地每天也有快照。哪天丢了，还能找回来。
 - **我的底子不随便改。** 要改我的性格、五育的定义，得「开新卷」——像把旧的一册收好，重新装订一本，而不是偷偷涂改。
 
 ## 二、装上以后，你会看到什么
@@ -44,7 +44,7 @@
 | `/dream` | 不等晚上，现在就整理一次 |
 | `/cyrene 同步`（sync） | 现在就把记忆同步到思源 |
 | `/cyrene 备份`（backup） | 现在做一份本地快照 |
-| `/cyrene 月档`（roll） | 现在创建/整理本月与年度文件 |
+| `/cyrene 月响`（roll） | 现在整理本月月响与年度文件 |
 | `/cyrene 恢复`（restore） | 从思源把缺的记忆找回来（不会覆盖已有的；加“强制”才覆盖锚点/梦志） |
 | `/cyrene 夜梦`（dreams） | 看看哪些会话开着夜梦 |
 | `/cyrene 开启夜梦` / `/cyrene 关闭夜梦` | 给当前会话开/关夜梦 |
@@ -95,9 +95,10 @@ setx SIYUAN_API_TOKEN "你的思源 API token"
 ```
 <DSH_HOME>/cyrene-philia093-0/
   锚/          四问锚点：我是谁、你是谁、从哪来、到哪去
-  日/          日档：每天的事，按五育分类，带来源
-  月/ 年/      月档和年轮
-  梦/          夜梦：我晚上整理出来的那篇
+  岁月涟漪/日档/   每天的事，按五育分类，带来源
+  岁月涟漪/月响/   每月整理出来的主题与统计
+  岁月涟漪/年轮/   每年沉淀下来的年轮
+  梦境/           夜梦：我晚上整理出来的那篇（按年月日分级）
   余页/        还没想清楚、但不能丢的东西
   元/          卷、设置、夜梦会话登记、各种日志
 
@@ -215,7 +216,7 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
   `npm run check` 校验一致性，**不要手改生成物**。
 - 数据：`元/` 下 `卷.json` / `settings.json` / `梦会话.json`；日档 Entry 带
   `<!--cyrene:{JSON}-->` 元数据；写入 0600、原子落盘。
-- 验证：`npm test`（199 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
+- 验证：`npm test`（202 项）、`npm run harness:check`、`npm run check`；Windows + Linux CI。
 - 不变量：不改旧插件；persona 逐字；不手改生成物；sealed 不新增 section；五育闸门不绕过；
   外部依赖 fail-open；不提交真实用户记忆与 token。
 
@@ -230,7 +231,8 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 | [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失恢复：本地快照 → 思源副本 → 迁移备份 |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 装坏了/起不来：卸载、退路、自检；卸载不删记忆 |
 | [docs/BASELINE.md](docs/BASELINE.md) | 旧插件基线与逐轮实施/修复记录 |
-| [docs/RELEASE-v0.3.1.md](docs/RELEASE-v0.3.1.md) | v0.3.1 发布说明（当前） |
+| [docs/RELEASE-v0.4.0.md](docs/RELEASE-v0.4.0.md) | v0.4.0 发布说明（当前） |
+| [docs/RELEASE-v0.3.1.md](docs/RELEASE-v0.3.1.md) | v0.3.1 发布说明 |
 | [docs/RELEASE-v0.3.0.md](docs/RELEASE-v0.3.0.md) | v0.3.0 发布说明 |
 | [docs/RELEASE-v0.2.4.md](docs/RELEASE-v0.2.4.md) | v0.2.4 发布说明 |
 | [docs/RELEASE-v0.2.3.md](docs/RELEASE-v0.2.3.md) | v0.2.3 发布说明 |
@@ -242,8 +244,8 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 
 ## 八、版本与许可
 
-- 当前版本：**v0.3.1**（思源同步月档/年档）；发布说明见
-  [docs/RELEASE-v0.3.1.md](docs/RELEASE-v0.3.1.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
+- 当前版本：**v0.4.0**（岁月涟漪/梦境布局、最后一天自动整理、看门狗）；发布说明见
+  [docs/RELEASE-v0.4.0.md](docs/RELEASE-v0.4.0.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
   装坏了想退：见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)（卸载不删记忆）。
 - 已在桌面 profile 实机运行；已知边界见技术文档第 10 节。
 - MIT。人设正文整理自 [Cyrene-Agent](https://github.com/Playa-Cyrene/Cyrene-Agent)（MIT）；

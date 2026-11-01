@@ -65,6 +65,26 @@ dsh plugin --profile desktop add link:E:/DSH-workspace/dsh-cyrene-philia093-0
 - 旧会话（preset id `chat` / `cyrene-work`）能恢复；
 - 抽查记忆：`/memory` 看到四问锚点与条目统计。
 
+## 4.1 0.4.0 布局迁移（旧卷 → 岁月涟漪/梦境）
+
+0.4.0 起，本地布局改为：
+
+```
+岁月涟漪/日档、岁月涟漪/月响、岁月涟漪/年轮、梦境/YYYY/MM
+```
+
+已有记忆用 `scripts/migrate-layout.mjs` 迁移：
+
+```pwsh
+# 先看计划
+node scripts/migrate-layout.mjs
+# 确认后执行（幂等）
+node scripts/migrate-layout.mjs --apply
+```
+
+脚本会移动文件、改写条目 `path`、清理旧目录，让索引与思源缓存下次重建。迁移前请先复制
+`~/.dsh/cyrene-philia093-0` 与 `~/.dsh/cyrene-philia093-0-snapshots`；本次实际迁移前已另存完整备份。
+
 ## 5. 回滚
 
 1. 卸载新卷；

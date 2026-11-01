@@ -95,7 +95,7 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
   启动时清理未登记（旧/死）会话的日程。
 - 执行：任一启用会话的标记到达即领租约；提示词带上「参与今晚统合的会话 + 最近一句」，
   **只写一篇统合梦志**（记忆本身全局共享，不按会话分文件）。
-- 写梦志工具：`memory_dream_journal`（`梦/YYYY-MM-DD.md`；重复调用由模型追加补记）。模型没写时只记「本次未产出」，不复制日档。
+- 写梦志工具：`memory_dream_journal`（`梦境/YYYY/MM/YYYY-MM-DD.md`；重复调用由模型追加补记）。模型没写时只记「本次未产出」，不复制日档。
 
 ## 5. 存储
 
@@ -105,10 +105,10 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 
 ```
 锚/                  四问锚点（我是谁/你是谁/来处/去处）
-日/YYYY/MM/YYYY-MM-DD.md
-月/YYYY/YYYY-MM.md
-年/YYYY.md
-梦/YYYY-MM-DD.md
+岁月涟漪/日档/YYYY/MM/YYYY-MM-DD.md
+岁月涟漪/月响/YYYY/YYYY-MM.md
+岁月涟漪/年轮/YYYY.md
+梦境/YYYY/MM/YYYY-MM-DD.md
 档/                  滚动档（月/年统计派生）
 余页/                自由写作区（不注入、不日常检索、只受配额）
 余页/待定/YYYY-MM-DD.md   五育闸门未通过的记忆（月/年检复检对象）

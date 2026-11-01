@@ -524,7 +524,7 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { style: ui.cardHead },
-              h('div', { style: ui.cardTitle }, '夜梦与定时'),
+              h('div', { style: ui.cardTitle }, '梦境与定时'),
               h('div', { style: ui.cardHint }, '保存后重启生效')
             ),
             h(

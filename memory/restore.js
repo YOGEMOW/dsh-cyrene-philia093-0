@@ -14,6 +14,7 @@ import { entryId, normalizeEntry, hashText } from './parse.js'
 import { appendEntry, dayFilePath, readTextSafe, atomicWrite } from './store.js'
 import { loadEntries, invalidate } from './entries.js'
 import { findNotebook, findDocId, listDocsByPrefix, exportMd } from './siyuan.js'
+import { absPath, dreamRelPath } from './paths.js'
 
 /** hpath 最后一段是日期 → 返回 YYYY-MM-DD，否则 null。 */
 export function dayFromHPath(hpath) {
@@ -154,7 +155,7 @@ export function restoreJournals(root, journals, options = {}) {
     const day = dayFromJournalHPath(item?.hpath ?? '') ?? (typeof item?.day === 'string' ? item.day : null)
     const body = typeof item?.markdown === 'string' ? item.markdown.trim() : ''
     if (day === null || body === '') continue
-    const file = join(root, '梦', `${day}.md`)
+    const file = absPath(root, dreamRelPath(day))
     if (existsSync(file) === true && force !== true) continue
     if (atomicWrite(file, `# ${day} · 夜梦\n\n${body}\n`) === true) restored += 1
   }
@@ -203,9 +204,11 @@ export async function restoreFromSiYuan(cfg, root, options = {}) {
   report.notebook = notebook.name
   const now = Date.now()
 
-  // 1) 日档条目
+  // 1) 日档条目（新路径优先；旧路径兼容）
   try {
-    const docs = await listDocsByPrefix(cfg, notebook.id, `${cfg.rootHPath}/日/`)
+    const docsNew = await listDocsByPrefix(cfg, notebook.id, `${cfg.rootHPath}/岁月涟漪/日档/`)
+    const docsOld = await listDocsByPrefix(cfg, notebook.id, `${cfg.rootHPath}/日/`)
+    const docs = [...docsNew, ...docsOld]
     const items = []
     for (const doc of docs) {
       const day = dayFromHPath(doc.hpath)
@@ -237,9 +240,11 @@ export async function restoreFromSiYuan(cfg, root, options = {}) {
     report.errors.push(`锚点回灌失败：${error instanceof Error ? error.message : String(error)}`)
   }
 
-  // 3) 梦志
+  // 3) 梦志（新路径优先；旧路径兼容）
   try {
-    const docs = await listDocsByPrefix(cfg, notebook.id, `${cfg.rootHPath}/梦/`)
+    const docsNew = await listDocsByPrefix(cfg, notebook.id, `${cfg.rootHPath}/梦境/`)
+    const docsOld = await listDocsByPrefix(cfg, notebook.id, `${cfg.rootHPath}/梦/`)
+    const docs = [...docsNew, ...docsOld]
     const journals = []
     for (const doc of docs) {
       const day = dayFromJournalHPath(doc.hpath)

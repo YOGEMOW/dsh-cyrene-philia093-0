@@ -113,7 +113,7 @@ test('月检：对上一自然月出五育体检并写年轮；返回待定清�
     assert.equal(result.audit.ok, true)
     assert.equal(result.audit.empty, undefined)
     assert.equal(result.pending.length, 1)
-    const yearFile = path.join(root, '年', '2026.md')
+    const yearFile = path.join(root, '岁月涟漪', '年轮', '2026.md')
     assert.equal(fs.existsSync(yearFile), true)
     assert.match(fs.readFileSync(yearFile, 'utf8'), /五育体检 2026-10/)
     // 幂等：同月第二次跳过
