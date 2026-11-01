@@ -195,6 +195,24 @@ export function docHPath(cfg, entry) {
   return `${cfg.rootHPath}/日/${y}/${m}/${day}`
 }
 
+/** 月档/年档的思源 hpath。 */
+export function archiveHPath(cfg, kind, id) {
+  const value = String(id ?? '')
+  if (kind === 'month') {
+    const year = value.slice(0, 4)
+    return `${cfg.rootHPath}/月/${year}/${value} · 月档`
+  }
+  return `${cfg.rootHPath}/年/${value} · 年轮`
+}
+
+/** 月档/年档正文：去掉 YAML frontmatter 与一级标题（标题由思源文档名承担）。 */
+export function normalizeArchiveBody(text) {
+  let body = String(text ?? '').replace(/^\uFEFF/, '').trim()
+  body = body.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n*/, '')
+  body = body.replace(/^(?:# [^\n]*\n+)+/, '')
+  return body.trim()
+}
+
 /**
  * 镜像一批记忆。失败条目留在 pending，不抛。
  * @returns { ok, synced, updated, skipped, errors[], notebookId }
@@ -607,6 +625,89 @@ export async function syncJournal(cfg, root, day, text) {
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) }
   }
+}
+
+/**
+ * 镜像一份月档/年档。整篇级：内容 hash 相同跳过；变化则删旧重建（与梦志一致）。
+ * @param kind 'month' | 'year'
+ */
+export async function syncArchiveDoc(cfg, root, kind, id, text) {
+  const body = normalizeArchiveBody(text)
+  if (cfg.enabled !== true || body === '') return { ok: false, reason: 'disabled-or-empty' }
+  const hpath = archiveHPath(cfg, kind, id)
+  const state = loadMirrorState(root)
+  let notebook = null
+  try {
+    notebook = await findNotebook(cfg)
+  } catch (error) {
+    return { ok: false, reason: `连接思源失败：${error instanceof Error ? error.message : String(error)}` }
+  }
+  if (notebook === null) return { ok: false, reason: `未找到笔记本「${cfg.notebook}」` }
+  state.notebookId = notebook.id
+  state.archives = state.archives !== null && typeof state.archives === 'object' ? state.archives : {}
+  const key = `${kind}/${id}`
+  try {
+    const hash = hashText(body)
+    let docId = typeof state.docs[hpath] === 'string' ? state.docs[hpath] : ''
+    if (docId === '') docId = (await findDocId(cfg, notebook.id, hpath)) ?? ''
+    docId = (await dedupeDocsByHPath(cfg, hpath, docId)) || docId
+    const known = state.archives[key]
+    if (docId !== '' && known !== null && typeof known === 'object' && known.hash === hash) {
+      return { ok: true, skipped: true, docId }
+    }
+    if (docId !== '') {
+      try {
+        await removeDoc(cfg, docId)
+      } catch {
+        /* 删除失败则重建时可能产生同名文档，接受 */
+      }
+      docId = ''
+    }
+    const createdId = await api(cfg, '/api/filetree/createDocWithMd', {
+      notebook: notebook.id,
+      path: hpath,
+      markdown: body
+    })
+    if (typeof createdId !== 'string' || createdId === '') throw new Error('createDocWithMd 未返回文档 id')
+    state.docs[hpath] = createdId
+    state.archives[key] = { hash, docId: createdId, synced_at: Date.now() }
+    state.lastSync = Date.now()
+    saveMirrorState(root, state)
+    return { ok: true, docId: createdId, rebuilt: true }
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+/** 批量镜像月档/年档（items: [{kind,id,text}]）。 */
+export async function syncArchives(cfg, root, items) {
+  const result = { ok: false, synced: 0, skipped: 0, errors: [], notebookId: '' }
+  if (cfg.enabled !== true) {
+    result.errors.push('siyuan disabled')
+    return result
+  }
+  const list = Array.isArray(items) ? items : []
+  for (const item of list) {
+    const kind = item?.kind === 'year' ? 'year' : 'month'
+    const id = String(item?.id ?? '')
+    if (id === '') continue
+    const one = await syncArchiveDoc(cfg, root, kind, id, item?.text ?? '')
+    if (one.ok === true) {
+      if (one.skipped === true) result.skipped += 1
+      else result.synced += 1
+    } else {
+      result.errors.push(`${kind}/${id}: ${one.reason ?? 'unknown'}`)
+    }
+  }
+  result.ok = result.errors.length === 0
+  if (result.synced > 0) {
+    try {
+      await api(cfg, '/api/sqlite/flushTransaction', {})
+    } catch {
+      /* ignore */
+    }
+  }
+  return result
 }
 
 /** 诊断日志。 */

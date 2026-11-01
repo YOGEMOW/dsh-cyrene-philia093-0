@@ -5,7 +5,7 @@
 
 ## 1. 项目是什么
 
-- 包名：`dsh-cyrene-philia093-0`，版本 `0.3.0`。
+- 包名：`dsh-cyrene-philia093-0`，版本 `0.3.1`。
 - 类型：**纯 Bundle 插件**（不含客户端构建链、无第三方运行时依赖），随 DSH `>=0.2.1-rc.2` 运行。
 - 入口：`host/index.mjs`（宿主行）＋ `cordis.patch.yml`（两个预设声明）。
 - 合并并取代：`dsh-cyrene` 0.6.3 与 `dsh-cyrene-eternal-page-remembrance` 0.5.4。
@@ -27,7 +27,7 @@
 | `runtime/` | 预设半：轨道、能力总则、计划桥、记忆工具、命令、截面镜像 |
 | `memory/` | 记忆引擎（从一页永恒迁入）：解析/存储/检索/注入/五育/夜梦/思源/恢复 |
 | `client.js` | Client 半：设置面板、会话头徽标 |
-| `tests/` | 198 项单元/契约/迁移/恢复测试，合成数据 |
+| `tests/` | 199 项单元/契约/迁移/恢复测试，合成数据 |
 | `docs/` | 架构、契约、迁移、恢复、基线、发布说明 |
 
 ## 3. 组合与预设
@@ -124,7 +124,9 @@
 - 配置：默认 `http://127.0.0.1:6806` / `93-昔涟` / `/一页永恒`；token 只读环境变量
   `SIYUAN_API_TOKEN`。
 - 配置优先级：默认值 ← Loader 行配置 ← `元/settings.json`；改后重启生效。
-- 镜像：锚点/条目/梦志/余页；30 分钟兜底 + 写后 1.5s 防抖 `flushSoon`；失败只记日志。
+- 镜像：锚点/条目/梦志/余页/月档/年档；30 分钟兜底 + 写后 1.5s 防抖 `flushSoon`；失败只记日志。
+  月档 hpath `/一页永恒/月/YYYY/YYYY-MM · 月档`，年档 `/一页永恒/年/YYYY · 年轮`；
+  `syncArchives` 按内容 hash 跳过/整篇重建，正文去掉 frontmatter 与一级标题。
 - 恢复：`restore-siyuan.mjs`（默认 missing-only、hash 去重；`--force --yes` 覆盖锚点/梦志）。
 - 面板 API：`GET /status`、`GET /session?sessionId=`、`POST /action`
   （`sync|backup|dream|dream-session|restore|save-config`）。
@@ -132,7 +134,7 @@
 ## 8. 构建、测试与发布
 
 ```bash
-npm test              # 198 项
+npm test              # 199 项
 npm run harness:check # node --check 全部运行时代码（含 client.js）
 npm run build         # 生成 cordis.patch.yml
 npm run check         # 生成一致性

@@ -236,7 +236,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
           if (typeof run !== 'function') return { kind: 'error', text: '维护未安装（config.backup.enabled != true）。' }
           const result = await run()
           return result.ok === true
-            ? { kind: 'success', text: `已同步到思源（条目 ${result.entries ?? 0}）。` }
+            ? { kind: 'success', text: `已同步到思源（条目 ${result.entries ?? 0}；月/年档 ${result.archives ?? 0}）。` }
             : { kind: 'error', text: `同步失败：${result.error ?? '未知原因'}` }
         }
         if (parsed.action === 'backup') {

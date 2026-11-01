@@ -22,6 +22,7 @@ import {
   loadMirrorState,
   resolveSiYuanConfig,
   syncAnchors,
+  syncArchives,
   syncEntries,
   syncFreeArea,
   syncJournal,
@@ -61,6 +62,33 @@ export function installMaintenance(ctx, service, rawSiyuan) {
   let lastMirrorAt = 0
   let lastMirrorError = ''
 
+  /** 本地所有月档/年档（供思源镜像）。 */
+  const listArchiveDocs = () => {
+    const items = []
+    try {
+      for (const year of readdirSync(join(root, '月'))) {
+        const dir = join(root, '月', year)
+        for (const name of readdirSync(dir)) {
+          if (!/^\d{4}-\d{2}\.md$/.test(name)) continue
+          const text = readTextSafe(join(dir, name))
+          if (text.trim() !== '') items.push({ kind: 'month', id: name.replace(/\.md$/, ''), text })
+        }
+      }
+    } catch {
+      /* 月目录不存在 */
+    }
+    try {
+      for (const name of readdirSync(join(root, '年'))) {
+        if (!/^\d{4}\.md$/.test(name)) continue
+        const text = readTextSafe(join(root, '年', name))
+        if (text.trim() !== '') items.push({ kind: 'year', id: name.replace(/\.md$/, ''), text })
+      }
+    } catch {
+      /* 年目录不存在 */
+    }
+    return items
+  }
+
   /** 思源镜像：锚点 + 近 3 天条目 + 近 7 天梦志 + 余页。 */
   const runMirror = async () => {
     if (siyuan.enabled !== true) return { ok: true, skipped: true }
@@ -93,10 +121,21 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       } catch {
         /* 余页镜像失败不阻塞 */
       }
+      let archives = 0
+      try {
+        const docs = listArchiveDocs()
+        if (docs.length > 0) {
+          const result = await syncArchives(siyuan, root, docs)
+          archives = result.synced
+          if (result.ok !== true) logMirror(root, `archives warn ${(result.errors ?? []).join('；')}`)
+        }
+      } catch {
+        /* 月/年档镜像失败不阻塞 */
+      }
       lastMirrorAt = Date.now()
       lastMirrorError = ''
-      logMirror(root, `tick ok entries=${recent.length} anchors=1`)
-      return { ok: true, entries: recent.length }
+      logMirror(root, `tick ok entries=${recent.length} archives=${archives} anchors=1`)
+      return { ok: true, entries: recent.length, archives }
     } catch (error) {
       lastMirrorError = error instanceof Error ? error.message : String(error)
       logMirror(root, `tick failed ${lastMirrorError}`)
