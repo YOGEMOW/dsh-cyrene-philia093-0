@@ -155,7 +155,7 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
     maintenance === undefined
       ? '- 维护：未安装'
       : `- 维护：每 ${cfg.backup?.intervalMinutes ?? 30} 分钟 ｜ 快照 ${cfg.backup?.enabled === true} ｜ 思源 ${maintenance.siyuan?.enabled === true}${maintenance.lastMirrorError ? `（上次失败：${maintenance.lastMirrorError}）` : ''}`,
-    '- 手动：/cyrene 同步｜/cyrene 备份｜/cyrene 恢复｜/cyrene 夜梦｜/dream（立即整理）；发 /cyrene 帮助 看全部',
+    '- 手动：/cyrene 同步｜/cyrene 备份｜/cyrene 恢复｜/cyrene 夜梦｜/cyrene 整理（立即整理）；发 /cyrene 帮助 看全部',
   ]
   return lines.join('\n')
 }
@@ -193,6 +193,8 @@ export function commandHelpText() {
     '【昔涟 · 命令】',
     '/cyrene 帮助 —— 显示这份说明',
     '/cyrene 诊断（doctor） —— 体检：记忆/轨道/漂移/夜梦/备份',
+    '/cyrene 记忆（memory） —— 看看我记得的你、最近的记忆',
+    '/cyrene 整理（dream） —— 不等晚上，现在就整理一次',
     '/cyrene 同步（sync） —— 现在就把记忆同步到思源',
     '/cyrene 备份（backup） —— 现在做一份本地快照',
     '/cyrene 月响（roll） —— 立即整理本月月响与年度文件',
@@ -201,7 +203,7 @@ export function commandHelpText() {
     '/cyrene 开启夜梦 / 关闭夜梦 —— 切换当前会话的夜梦',
     '/cyrene 开卷 确认 <原因> —— 开新卷（记录人格边界，不改人设文本）',
     '',
-    '英文名（doctor/sync/backup/restore/dreams）也能用；不确定就发 /cyrene 帮助。',
+    '英文名（memory/dream/doctor/sync/backup/restore/dreams）也能用；不确定就发 /cyrene 帮助。',
   ].join('\n')
 }
 
@@ -214,9 +216,11 @@ export function parseCyreneCommand(rawInput) {
   const lower = text.toLowerCase()
   if (text === '' || /^(help|帮助|说明|命令|菜单)$/i.test(text)) return { action: 'help' }
   if (/^(doctor|诊断|体检|检查)$/i.test(text)) return { action: 'doctor' }
+  if (/^(memory|记忆|记忆概览|看看记忆)$/i.test(text)) return { action: 'memory' }
+  if (/^(dream|整理|立即整理|整理记忆|立刻整理)$/i.test(text)) return { action: 'dream' }
   if (/^(sync|同步|立即同步)$/i.test(text)) return { action: 'sync' }
   if (/^(backup|备份|快照|立即备份)$/i.test(text)) return { action: 'backup' }
-  if (/^(roll|月响|月档|整理月响|整理月档|年轮|年档|整理年轮|整理年档|整理月年|整理)$/i.test(text)) return { action: 'roll' }
+  if (/^(roll|月响|月档|整理月响|整理月档|年轮|年档|整理年轮|整理年档|整理月年)$/i.test(text)) return { action: 'roll' }
   if (/^(restore|恢复|从思源恢复)(\s+(force|强制|强行))?$/i.test(text)) {
     return { action: 'restore', force: /(force|强制|强行)/i.test(lower) }
   }
@@ -237,8 +241,8 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
   return [
     {
       name: 'cyrene',
-      description: '昔涟：帮助 / 诊断 / 同步 / 备份 / 恢复 / 夜梦 / 开卷（中英文都能用）',
-      input: { hint: '帮助｜诊断｜同步｜备份｜恢复｜夜梦｜开卷' },
+      description: '昔涟：帮助 / 诊断 / 记忆 / 整理 / 同步 / 备份 / 恢复 / 夜梦 / 开卷（中英文都能用）',
+      input: { hint: '帮助｜诊断｜记忆｜整理｜同步｜备份｜恢复｜夜梦｜开卷' },
       handler: async (invocation) => {
         const rawInput = String(invocation?.rawInput ?? '').trim()
         const parsed = parseCyreneCommand(rawInput)
@@ -261,6 +265,17 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
           return result.ok === true
             ? { kind: 'success', text: `已备份：${result.path ?? ''}${result.skipped === true ? '（已存在，跳过）' : ''}` }
             : { kind: 'error', text: `备份失败：${result.error ?? '未知原因'}` }
+        }
+        if (parsed.action === 'memory') {
+          return { kind: 'success', text: memoryText({ service }) }
+        }
+        if (parsed.action === 'dream') {
+          const trigger = service?.dream?.triggerDream
+          if (typeof trigger !== 'function') return { kind: 'error', text: '夜梦调度未安装（config.dream.enabled != true）。' }
+          const result = await trigger(invocation?.agent)
+          return result.ok === true
+            ? { kind: 'success', text: result.message ?? '已启动整理。' }
+            : { kind: 'error', text: result.error ?? '启动失败。' }
         }
         if (parsed.action === 'roll') {
           const now = Date.now()

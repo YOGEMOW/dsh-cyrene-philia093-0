@@ -194,6 +194,7 @@ test('/cyrene 支持中文子命令与帮助', async () => {
   try {
     const ctx = fakeCtx()
     const service = serviceFor(root, {
+      dream: { triggerDream: async () => ({ ok: true, message: '已启动整理。' }) },
       maintenance: {
         syncNow: async () => ({ ok: true, entries: 1 }),
         backupNow: () => ({ ok: true, path: 'C:/snap/2' }),
@@ -209,6 +210,14 @@ test('/cyrene 支持中文子命令与帮助', async () => {
     const doctor = await ctx.defs[0].handler({ rawInput: '诊断', agent: { session: { header: {} } } })
     assert.equal(doctor.kind, 'success')
     assert.match(doctor.text, /cyrene doctor/)
+
+    const memory = await ctx.defs[0].handler({ rawInput: '记忆' })
+    assert.equal(memory.kind, 'success')
+    assert.match(memory.text, /锚点|记忆/)
+
+    const dream = await ctx.defs[0].handler({ rawInput: '整理' })
+    assert.equal(dream.kind, 'success')
+    assert.match(dream.text, /已启动整理/)
 
     const sync = await ctx.defs[0].handler({ rawInput: '同步' })
     assert.equal(sync.kind, 'success')
