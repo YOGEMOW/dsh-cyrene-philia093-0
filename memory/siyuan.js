@@ -461,11 +461,19 @@ export async function syncAnchors(cfg, root, anchors) {
       state.anchors = state.anchors !== null && typeof state.anchors === 'object' ? state.anchors : {}
       const known = state.anchors[key]
       let docId = typeof state.docs[hpath] === 'string' ? state.docs[hpath] : ''
-      if (docId === '') docId = (await findDocId(cfg, notebook.id, hpath)) ?? ''
+      const actualId = (await findDocId(cfg, notebook.id, hpath)) ?? ''
+      let knownMatches = known !== null && typeof known === 'object' && known.hash === hash
+      // 状态里的 docId 可能指向历史/已删除文档；以思源当前 hpath 实际文档为准。
+      if (actualId !== '' && docId !== actualId) {
+        docId = actualId
+        knownMatches = false
+      } else if (docId === '') {
+        docId = actualId
+      }
       // 顺手去重：历史重复文档（同 hpath 多篇）在这里收拢成一篇
       docId = (await dedupeDocsByHPath(cfg, hpath, docId)) || docId
       // 锚点用整篇重建（内容小、变化少）：避免「卷 N」块越叠越多、标题重复、旧版残留。
-      if (docId !== '' && known !== null && typeof known === 'object' && known.hash === hash) continue
+      if (docId !== '' && knownMatches) continue
       if (docId !== '') {
         try {
           await removeDoc(cfg, docId)
