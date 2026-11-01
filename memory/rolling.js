@@ -25,6 +25,44 @@ export function prevMonth(now) {
   return ymOf(d.getTime())
 }
 
+/** 当前月档骨架（月末滚动时会被正式内容替换）。 */
+export function buildMonthSkeleton(month) {
+  return [
+    '---',
+    `month: ${month}`,
+    'status: open',
+    'entries: 0',
+    'days: 0',
+    '---',
+    '',
+    `# ${month} · 月档`,
+    '',
+    '（本月进行中。月档由宿主在月末自动整理；平时可在本文件里补记。）',
+    '',
+  ].join('\n')
+}
+
+/**
+ * 确保当前月/当前年的文件存在（幂等）。
+ * 不覆盖已有文件；月档写 status: open 骨架，月末滚动时替换为正式月档。
+ */
+export function ensureCalendarDocs(root, now = Date.now()) {
+  const d = new Date(now)
+  const month = ymOf(now)
+  const year = String(d.getFullYear())
+  const monthFile = join(root, '月', year, `${month}.md`)
+  const yearFile = join(root, '年', `${year}.md`)
+  let createdMonth = false
+  let createdYear = false
+  if (existsSync(monthFile) !== true) {
+    createdMonth = atomicWrite(monthFile, buildMonthSkeleton(month)) === true
+  }
+  if (existsSync(yearFile) !== true) {
+    createdYear = atomicWrite(yearFile, `---\nyear: ${year}\n---\n\n# ${year} · 年轮\n\n（年度进行中；跨年后会自动补「年轮定格」。）\n`) === true
+  }
+  return { month, year, monthFile, yearFile, createdMonth, createdYear }
+}
+
 const AXES = ['德', '智', '体', '美', '劳']
 
 /** 按五育分组，取各组重要度最高的若干条。 */
@@ -86,7 +124,13 @@ export function rollMonthly(root, entries, now = Date.now()) {
   const rows = (entries ?? []).filter((e) => typeof e?.day === 'string' && e.day.startsWith(month))
   const path = join(root, '月', `${month.slice(0, 4)}`, `${month}.md`)
   if (rows.length === 0) return { created: false, month, entries: 0, reason: 'empty' }
-  if (existsSync(path) === true) return { created: false, month, entries: rows.length, reason: 'exists' }
+  if (existsSync(path) === true) {
+    const existing = readTextSafe(path)
+    // 月初自动建的 status: open 骨架：月末用正式内容替换；已有正式月档/人工内容则不动。
+    if (existing.includes('status: open') !== true) {
+      return { created: false, month, entries: rows.length, reason: 'exists' }
+    }
+  }
   const ok = atomicWrite(path, buildMonthDoc(month, rows))
   return { created: ok === true, month, entries: rows.length, path }
 }
@@ -155,9 +199,10 @@ export function rollYearly(root, entries, now = Date.now()) {
   return { created: ok === true, year, path: file }
 }
 
-/** 维护 tick 调用：先月后年。 */
+/** 维护 tick 调用：先补当前月/年骨架，再滚上个月/上一年。 */
 export function rollCalendars(root, entries, now = Date.now()) {
+  const ensure = ensureCalendarDocs(root, now)
   const monthly = rollMonthly(root, entries, now)
   const yearly = rollYearly(root, entries, now)
-  return { monthly, yearly }
+  return { ensure, monthly, yearly }
 }

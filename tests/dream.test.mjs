@@ -285,3 +285,40 @@ test('列表富化：标题/工作区/未登记会话', async () => {
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('夜梦提示词带上今天真实对话摘录', async () => {
+  const { dir, root } = setup()
+  try {
+    const now = Date.now()
+    const query = {
+      async listSessions() {
+        return [{ header: { id: 'sess-1', createdAt: now, cwd: 'E:\\work\\proj', agentPreset: 'chat' }, live: true }]
+      },
+      async readTitleSnapshots() {
+        return []
+      },
+      async readSession() {
+        return {
+          events: [
+            { type: 'user/message', time: now, data: { content: [{ type: 'text', text: '今天聊了很多关于插件的事' }] } },
+            { type: 'assistant/message', time: now, data: { content: [{ type: 'text', text: '我记着呢。' }] } },
+            { type: 'tool/call', time: now, data: { name: 'memory_search' } },
+          ],
+        }
+      },
+    }
+    const ctx = fakeCtx({ sessionQuery: query })
+    const service = serviceFor(root)
+    installDream(ctx, service)
+    const preStep = ctx.handlers.get('agent/pre-step')
+    const agent = { ctx: {}, session: { id: 'sess-1', header: { cwd: 'E:\\work\\proj' } } }
+    await preStep({ agent }, async () => ({ kind: 'enter', messages: [] }))
+    const out = await preStep({ agent }, async () => ({ kind: 'enter', messages: [markerMessage()] }))
+    assert.equal(out.messages.length, 2)
+    const prompt = JSON.stringify(out.messages)
+    assert.match(prompt, /今天聊了很多关于插件的事/)
+    assert.match(prompt, /我记着呢/)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})

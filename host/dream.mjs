@@ -275,8 +275,72 @@ export function installDream(ctx, service) {
     }
   }
 
+  /** 从消息数据里取纯文本（跳过工具调用/附件等）。 */
+  const extractMessageText = (data) => {
+    const blocks = data?.content ?? data?.message?.content
+    if (Array.isArray(blocks)) {
+      return blocks
+        .filter((block) => block?.type === 'text' && typeof block.text === 'string')
+        .map((block) => block.text)
+        .join('\n')
+        .trim()
+    }
+    return typeof data?.text === 'string' ? data.text.trim() : ''
+  }
+
+  /**
+   * 今晚的会话摘录：把启用中的昔涟会话今天说过的话压成一段素材。
+   * 夜梦原先只读日档；模型白天没记的对话就丢了。这里补原始素材（有上限、只读、不改日档）。
+   */
+  const buildConversationDigest = async (now) => {
+    try {
+      const query = ctx.get('sessionQuery')
+      if (query === null || typeof query !== 'object' || typeof query.readSession !== 'function') return ''
+      const enrolled = loadDreamSessions(root)
+      const ids = Object.entries(enrolled.sessions ?? {})
+        .filter(([, entry]) => entry?.enabled !== false)
+        .sort(([, a], [, b]) => Number(b?.lastActiveAt ?? 0) - Number(a?.lastActiveAt ?? 0))
+        .slice(0, 6)
+        .map(([id]) => id)
+      const start = new Date(now)
+      start.setHours(0, 0, 0, 0)
+      const parts = []
+      for (const id of ids) {
+        try {
+          const snapshot = await query.readSession(id)
+          const events = Array.isArray(snapshot)
+            ? snapshot
+            : Array.isArray(snapshot?.events)
+              ? snapshot.events
+              : Array.isArray(snapshot?.log)
+                ? snapshot.log
+                : []
+          const lines = []
+          for (const event of events) {
+            if (Number(event?.time ?? 0) < start.getTime()) continue
+            if (event?.type !== 'user/message' && event?.type !== 'assistant/message') continue
+            const text = extractMessageText(event?.data)
+            if (text === '' || text.includes(DREAM_MARKER)) continue
+            if (/^(【一页永恒|<system-reminder>|Current runtime context|Time sampled|\[表情)/.test(text)) continue
+            lines.push(`${event.type === 'user/message' ? '用户' : '昔涟'}：${text.slice(0, 600)}`)
+          }
+          if (lines.length > 0) {
+            const title = enrolled.sessions[id]?.title ? `「${String(enrolled.sessions[id].title).slice(0, 40)}」` : ''
+            parts.push(`### 会话 ${shortIdOf(id)}${title}\n${lines.slice(-30).join('\n')}`)
+          }
+        } catch {
+          /* 单个会话读不到就跳过 */
+        }
+      }
+      const digest = parts.join('\n\n')
+      return digest.length > 12000 ? digest.slice(-12000) : digest
+    } catch {
+      return ''
+    }
+  }
+
   /** 标记到达：校验 → 领租约 → 把完整规程注入到标记之后。 */
-  const handleTrigger = (decision, messages, markerMsg, sessionId) => {
+  const handleTrigger = async (decision, messages, markerMsg, sessionId) => {
     try {
       const force = /force/i.test(textOf(markerMsg))
       if (dreamedToday(state, Date.now(), { time: cfg.dream.time, timeZone: cfg.dream.timeZone }) === true && force !== true) {
@@ -292,8 +356,14 @@ export function installDream(ctx, service) {
       const enrolled = loadDreamSessions(root)
       const sessions = Object.entries(enrolled.sessions)
         .filter(([, entry]) => entry?.enabled !== false)
-        .map(([id, entry]) => ({ id, lastUserText: entry?.lastUserText ?? '', lastActiveAt: entry?.lastActiveAt ?? 0 }))
-      const prompt = buildDreamPrompt(root, { sessions })
+        .map(([id, entry]) => ({
+          id,
+          title: entry?.title ?? '',
+          lastUserText: entry?.lastUserText ?? '',
+          lastActiveAt: entry?.lastActiveAt ?? 0,
+        }))
+      const digest = await buildConversationDigest(Date.now())
+      const prompt = buildDreamPrompt(root, { sessions, digest })
       const at = messages.indexOf(markerMsg)
       const out = messages.slice()
       out.splice(at + 1, 0, createPluginMessage(prompt, '一页永恒·夜梦'))

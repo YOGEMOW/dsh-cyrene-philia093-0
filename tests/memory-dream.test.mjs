@@ -130,3 +130,20 @@ test('同一天第二次梦志：追加「补记」而不是覆盖', () => {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('夜梦提示词带入会话摘录与标题', () => {
+  const root = tmpRoot()
+  try {
+    const prompt = buildDreamPrompt(root, {
+      sessions: [{ id: 'session-abcdef12-3456', title: '日常-昔涟聊天', lastUserText: '今天聊了很多' }],
+      digest: '### 会话 abcdef12「日常-昔涟聊天」\n用户：今天聊了很多\n昔涟：我记着呢。',
+    })
+    assert.match(prompt, /会话摘录/)
+    assert.match(prompt, /今天聊了很多/)
+    assert.match(prompt, /abcdef12/)
+    assert.match(prompt, /日常-昔涟聊天/)
+    assert.equal(prompt.includes('若今天是月末'), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

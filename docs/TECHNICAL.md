@@ -5,7 +5,7 @@
 
 ## 1. 项目是什么
 
-- 包名：`dsh-cyrene-philia093-0`，版本 `0.2.4`。
+- 包名：`dsh-cyrene-philia093-0`，版本 `0.3.0`。
 - 类型：**纯 Bundle 插件**（不含客户端构建链、无第三方运行时依赖），随 DSH `>=0.2.1-rc.2` 运行。
 - 入口：`host/index.mjs`（宿主行）＋ `cordis.patch.yml`（两个预设声明）。
 - 合并并取代：`dsh-cyrene` 0.6.3 与 `dsh-cyrene-eternal-page-remembrance` 0.5.4。
@@ -27,7 +27,7 @@
 | `runtime/` | 预设半：轨道、能力总则、计划桥、记忆工具、命令、截面镜像 |
 | `memory/` | 记忆引擎（从一页永恒迁入）：解析/存储/检索/注入/五育/夜梦/思源/恢复 |
 | `client.js` | Client 半：设置面板、会话头徽标 |
-| `tests/` | 194 项单元/契约/迁移/恢复测试，合成数据 |
+| `tests/` | 198 项单元/契约/迁移/恢复测试，合成数据 |
 | `docs/` | 架构、契约、迁移、恢复、基线、发布说明 |
 
 ## 3. 组合与预设
@@ -71,7 +71,7 @@
   `runtime/volume.mjs`：新卷（人格快照 + sha256，只增不改）。
 - `runtime/commands.mjs`：独立预设行（`inject: ['commands','cyreneMemory']`）注册
   `/cyrene` 与 `/memory`、`/dream`。`/cyrene` 支持中英文子命令（帮助/诊断/同步/备份/恢复/
-  夜梦/开启夜梦/关闭夜梦/开卷），由 `parseCyreneCommand()` 归一；`input.hint` 为中文短提示。
+  夜梦/开启夜梦/关闭夜梦/开卷/月档），由 `parseCyreneCommand()` 归一；`input.hint` 为中文短提示。
 
 ## 5. 存储格式
 
@@ -89,6 +89,9 @@
 - Entry 必填 `id/text/kind/axis/q/I/S/status`，可选五育扩展（`consequence/entropy/legacy/aim/nature`）；
   `links` 为 `"<id>|<type>"`；`base:true` 仅人能写。
 - 写入 0600、原子替换；`resolveRoot` 在 `DSH_HOME` 缺失时回落 `~/.dsh`。
+- 月/年自动创建：启动与维护时 `ensureCalendarDocs` 补当前 `月/YYYY/YYYY-MM.md`（`status: open`
+  骨架）和 `年/YYYY.md`；月末 `rollMonthly` 用五育汇总替换 open 骨架，已有正式/人工内容不覆盖；
+  1 月 `rollYearly` 给上一年追加「年轮定格」。`/cyrene 月档` 可立即执行。
 - 快照：`<DSH_HOME>/cyrene-philia093-0-snapshots/YYYY-MM-DD/`，保留 7 份。
 
 ## 6. 五育闸门与生命周期
@@ -105,9 +108,13 @@
 
 ### 夜梦
 
-- 登记表 `元/梦会话.json`：每会话 `enabled/lastActiveAt/lastUserText/preset`，默认启用。
+- 登记表 `元/梦会话.json`：每会话 `enabled/lastActiveAt/lastUserText/title/cwd/preset`，默认启用。
 - 每个启用会话各挂 23:30 任务；任一启用会话的标记到达即领租约；其余会话当天跳过。
-- 提示词带「参与今晚统合的会话 + 最近一句」，要求只写一篇统合梦志。
+- 提示词带「参与今晚统合的会话 + 最近一句」，并要求只写一篇统合梦志。
+- 触发时用 `sessionQuery.readSession` 读启用会话**当天**的 user/assistant 文本，压成 ≤12000 字
+  摘录放进提示词（去掉系统上下文/工具调用/系统提醒）；这样白天没写入日档的对话，夜里还有一次
+  提炼机会。摘录只作素材，不原样入档。
+- 月档/年轮由宿主 `rolling.js` 生成；提示词明确禁止模型用 `memory_fs` 写 `月/`、`年/`。
 - 模型经 `memory_dream_journal` 写 `梦/YYYY-MM-DD.md`；没写时收尾只记
   「本次夜梦没有产出」，**绝不复制日档**。
 - 未登记（旧/死）会话的标记会被丢弃；启动时清理其日程。
@@ -125,7 +132,7 @@
 ## 8. 构建、测试与发布
 
 ```bash
-npm test              # 194 项
+npm test              # 198 项
 npm run harness:check # node --check 全部运行时代码（含 client.js）
 npm run build         # 生成 cordis.patch.yml
 npm run check         # 生成一致性

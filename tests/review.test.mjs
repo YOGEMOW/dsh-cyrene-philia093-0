@@ -95,14 +95,18 @@ test('月检：对上一自然月出五育体检并写年轮；返回待定清�
   const { dir, root } = setup()
   try {
     const now = new Date(2026, 10, 15, 12, 0, 0).getTime() // 2026-11-15
-    writeThroughGate(root, {
-      text: '十月的记忆',
-      kind: 'fact',
-      axis: '体',
-      src_quote: '十月说的',
-      day: '2026-10-02',
-      created_at: new Date(2026, 9, 2, 12, 0, 0).getTime(),
-    })
+    const octEntry = normalizeEntry(
+      {
+        text: '十月的记忆',
+        kind: 'fact',
+        axis: '体',
+        src_quote: '十月说的',
+        day: '2026-10-02',
+        created_at: new Date(2026, 9, 2, 12, 0, 0).getTime(),
+      },
+      { now },
+    )
+    appendEntry(root, octEntry)
     writeThroughGate(root, { text: '没来源的十一月事', kind: 'fact', axis: '智' })
     const result = runMonthlyReview(root, now)
     assert.equal(result.month, '2026-11')

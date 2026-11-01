@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 import { resolveConfig } from '../memory/config.js'
 import { ensureVolumePersonaHash } from '../memory/persona.js'
+import { ensureCalendarDocs } from '../memory/rolling.js'
 import { mergeConfig, readSettings } from '../memory/settings.js'
 import { createMemoryService } from './memory-service.mjs'
 import { checkDrift } from './drift.mjs'
@@ -59,6 +60,12 @@ export function apply(ctx, rawConfig) {
     const tree = service.ensure()
     if (tree?.ok !== true) {
       ctx?.logger?.warn?.(`[${name}] 记忆目录初始化不完整：${(tree?.errors ?? []).join('；') || '未知原因'}`)
+    }
+    // 当前月/年文件随装随建：先有骨架，月底/跨年再滚成正式月档/年轮。
+    try {
+      ensureCalendarDocs(service.root)
+    } catch (error) {
+      ctx?.logger?.warn?.(`[${name}] 月/年骨架创建失败（已跳过）：${error instanceof Error ? error.message : String(error)}`)
     }
     // 卷 0 补章：迁移/首次装机时 import 建卷，persona_hash 可能为空。
     try {
