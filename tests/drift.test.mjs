@@ -74,7 +74,7 @@ test('单预设对比：一致 / 缺行 / 多行', async () => {
   assert.deepEqual(extra.extra, ['brand-new-tool'])
 })
 
-test('checkDrift：两个 base 都对比；readDocument 失败算漂移', async () => {
+test('checkDrift：两个 base 都对比；文档不可读时标记 skipped 而不误报缺行', async () => {
   const report = await checkDrift(fakeAgentPresets({
     standard: documentFor('standard'),
     cordis: documentFor('cordis'),
@@ -83,8 +83,10 @@ test('checkDrift：两个 base 都对比；readDocument 失败算漂移', async 
   assert.equal(report.presets.length, 2)
 
   const broken = await checkDrift(fakeAgentPresets({ standard: documentFor('standard') }))
-  assert.equal(broken.ok, false)
-  assert.equal(broken.presets.find((item) => item.base === 'cordis').error.includes('no preset'), true)
+  assert.equal(broken.ok, true)
+  const cordis = broken.presets.find((item) => item.base === 'cordis')
+  assert.equal(cordis.skipped, true)
+  assert.equal(cordis.error.includes('no preset'), true)
 })
 
 test('宿主：漂移报告写进 service.diagnostics', async () => {

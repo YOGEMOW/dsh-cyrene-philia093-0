@@ -68,11 +68,12 @@ export async function checkPresetDrift(agentPresets, base) {
   } catch (error) {
     return {
       base,
-      ok: false,
+      ok: true,
+      skipped: true,
       error: error instanceof Error ? error.message : String(error),
       expected,
       live: [],
-      missing: expected,
+      missing: [],
       extra: [],
     }
   }

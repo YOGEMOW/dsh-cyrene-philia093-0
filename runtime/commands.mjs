@@ -106,12 +106,19 @@ export function doctorText({ ctx, service, agent, pluginVersion = '0.0.0' }) {
   const drift = service?.diagnostics?.drift
   const driftLine = drift === null || drift === undefined
     ? '未检测（agentPresets 服务未就绪）'
-    : drift.ok === true
-      ? '无漂移（standard/cordis 与快照一致）'
-      : drift.presets
-        .filter((item) => item.ok !== true)
-        .map((item) => `${item.base}: 缺 ${JSON.stringify(item.missing ?? [])} 多 ${JSON.stringify(item.extra ?? [])}${item.error ? ` 错误 ${item.error}` : ''}`)
-        .join('；')
+    : (() => {
+      const presets = Array.isArray(drift.presets) ? drift.presets : []
+      const failed = presets.filter((item) => item.ok !== true)
+      const skipped = presets.filter((item) => item.skipped === true)
+      const parts = []
+      if (failed.length > 0) {
+        parts.push(failed.map((item) => `${item.base}: 缺 ${JSON.stringify(item.missing ?? [])} 多 ${JSON.stringify(item.extra ?? [])}`).join('；'))
+      }
+      if (skipped.length > 0) {
+        parts.push(`未完整检测：${skipped.map((item) => `${item.base}（${item.error ?? '文档不可读'}）`).join('；')}`)
+      }
+      return parts.length > 0 ? parts.join('；') : '无漂移（standard/cordis 与快照一致）'
+    })()
   const dream = service?.dream?.status?.()
   const maintenance = service?.maintenance?.status?.()
   const sections = service?.diagnostics?.sections

@@ -762,9 +762,9 @@ export function safeRelPath(root, rel) {
     // '.' 指根目录本身（fsops 的 ls/du 会用它），不是越界。
     if (relText === '.') return rootAbs;
     if (path.isAbsolute(relText) || /^[a-zA-Z]:/.test(relText) || /^[\\/]/.test(relText)) return null;
-    const parts = relText.split(/[\\/]+/);
+    const parts = relText.split(/[\\/]+/).filter(Boolean);
     if (parts.some((part) => part === '..')) return null;
-    const abs = path.resolve(rootAbs, relText);
+    const abs = path.resolve(rootAbs, ...parts);
     const relCheck = path.relative(rootAbs, abs);
     if (relCheck === '' || relCheck.startsWith('..') || path.isAbsolute(relCheck)) return null;
     // 已存在的路径再校验一次真实路径，防止符号链接逃逸出根目录。
