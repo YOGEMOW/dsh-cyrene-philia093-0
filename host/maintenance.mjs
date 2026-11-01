@@ -12,7 +12,7 @@ import { appendFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { loadEntries } from '../memory/entries.js'
-import { readAnchors } from '../memory/anchor.js'
+import { compactAllAnchors, readAnchors } from '../memory/anchor.js'
 import { monthlyAudit } from '../memory/audit.js'
 import { rollCalendars } from '../memory/rolling.js'
 import { runWatchdog } from '../memory/watchdog.js'
@@ -22,6 +22,7 @@ import {
   logMirror,
   loadMirrorState,
   resolveSiYuanConfig,
+  syncAnchorHistory,
   syncAnchors,
   syncArchives,
   syncDayShells,
@@ -135,6 +136,11 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       const anchors = readAnchors(root)
       if (anchors !== undefined) await syncAnchors(siyuan, root, anchors)
       try {
+        await syncAnchorHistory(siyuan, root)
+      } catch {
+        /* 锚点历史镜像失败不阻塞 */
+      }
+      try {
         const docs = listDreamDocs().slice(-JOURNAL_SYNC_DAYS)
         for (const item of docs) {
           const text = readTextSafe(item.path)
@@ -224,6 +230,14 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       rolling = rollCalendars(root, entries)
     } catch (error) {
       metaLog('维护.log', `audit/roll failed ${error instanceof Error ? error.message : String(error)}`)
+    }
+    try {
+      const anchors = compactAllAnchors(root)
+      for (const [key, item] of Object.entries(anchors)) {
+        if (item?.compacted === true) metaLog('锚点.log', `compact ${key} ${item.before}->${item.after}`)
+      }
+    } catch (error) {
+      metaLog('锚点.log', `compact failed ${error instanceof Error ? error.message : String(error)}`)
     }
     let watchdog = null
     try {

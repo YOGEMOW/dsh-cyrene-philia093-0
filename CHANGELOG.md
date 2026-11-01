@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0] — 2026-11-01
+
+- 自动锚点生命周期：核心上限 self 420 / user·goal 300 / origin 240；超限旧「卷·日期」段自动归档到
+  `锚/历史/<key>/YYYY-MM.md`，正文保留核心与引用；写入后和维护 tick 都会压缩。
+- `anchorChangeAllowed`/`recordAnchorChange` 真正接入 `memory_anchor`；空锚点保留占位、不编造。
+- 锚点历史同步思源 `/锚/历史/<label>/YYYY-MM`；现有「我是谁」719→352 字。
+- 测试：205 项。
+
 ## [0.4.4] — 2026-11-01
 
 - 修复思源锚点内容过期：`syncAnchors` 核对实际 docId，状态里的旧文档映射不再让 hash 跳过重建；

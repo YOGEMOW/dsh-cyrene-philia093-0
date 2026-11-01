@@ -19,6 +19,7 @@ export const DAY_ROOT = '岁月涟漪/日档'
 export const MONTH_ROOT = '岁月涟漪/月响'
 export const YEAR_ROOT = '岁月涟漪/年轮'
 export const DREAM_ROOT = '梦境'
+export const ANCHOR_HISTORY_ROOT = '锚/历史'
 
 export const LEGACY_DAY_ROOT = '日'
 export const LEGACY_MONTH_ROOT = '月'
@@ -26,7 +27,7 @@ export const LEGACY_YEAR_ROOT = '年'
 export const LEGACY_DREAM_ROOT = '梦'
 
 /** 顶层目录（ensureTree 用）。 */
-export const TOP_DIRS = ['锚', ROOT_DIR, DAY_ROOT, MONTH_ROOT, YEAR_ROOT, DREAM_ROOT, '档', '余页', '元']
+export const TOP_DIRS = ['锚', ANCHOR_HISTORY_ROOT, ROOT_DIR, DAY_ROOT, MONTH_ROOT, YEAR_ROOT, DREAM_ROOT, '档', '余页', '元']
 
 /** 日档相对路径（新）。 */
 export function dayRelPath(day) {

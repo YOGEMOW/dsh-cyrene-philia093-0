@@ -5,7 +5,7 @@
 
 ## 1. 项目是什么
 
-- 包名：`dsh-cyrene-philia093-0`，版本 `0.4.4`。
+- 包名：`dsh-cyrene-philia093-0`，版本 `0.5.0`。
 - 类型：**纯 Bundle 插件**（不含客户端构建链、无第三方运行时依赖），随 DSH `>=0.2.1-rc.2` 运行。
 - 入口：`host/index.mjs`（宿主行）＋ `cordis.patch.yml`（两个预设声明）。
 - 合并并取代：`dsh-cyrene` 0.6.3 与 `dsh-cyrene-eternal-page-remembrance` 0.5.4。
@@ -27,7 +27,7 @@
 | `runtime/` | 预设半：轨道、能力总则、计划桥、记忆工具、命令、截面镜像 |
 | `memory/` | 记忆引擎（从一页永恒迁入）：解析/存储/检索/注入/五育/夜梦/思源/恢复 |
 | `client.js` | Client 半：设置面板、会话头徽标 |
-| `tests/` | 202 项单元/契约/迁移/恢复测试，合成数据 |
+| `tests/` | 205 项单元/契约/迁移/恢复测试，合成数据 |
 | `docs/` | 架构、契约、迁移、恢复、基线、发布说明 |
 
 ## 3. 组合与预设
@@ -138,7 +138,7 @@
 ## 8. 构建、测试与发布
 
 ```bash
-npm test              # 202 项
+npm test              # 205 项
 npm run harness:check # node --check 全部运行时代码（含 client.js）
 npm run build         # 生成 cordis.patch.yml
 npm run check         # 生成一致性
@@ -163,6 +163,11 @@ npm run migrate -- --dry-run
   异常写 `元/看门狗.log`，状态进 `service.maintenance.status().watchdog`。
 - `scripts/migrate-layout.mjs`：0.3.x → 0.4.0 布局迁移，默认 dry-run，`--apply` 执行；改写条目
   `path`，让索引/思源缓存下次重建。旧目录清空后移除。
+- 锚点生命周期：`memory/anchor.js` 的 `compactAnchor` 在正文超过核心上限（`self` 420 字，其余
+  300/240/300）时，把最旧的 `卷·日期` 段追加到 `锚/历史/<key>/YYYY-MM.md`，正文保留核心与
+  「更早的卷」引用；`writeAnchorSafe` 写入后自动压缩，维护 tick 兜底；
+  `anchorChangeAllowed`（self/user/goal 每日 1 次、origin 每周 1 次）由 `memory_anchor` 工具执行，
+  `recordAnchorChange` 记录；历史镜像到 `/一页永恒/锚/历史/<label>/YYYY-MM`。
 
 ## 9. 不变量（AI 维护者必须遵守）
 

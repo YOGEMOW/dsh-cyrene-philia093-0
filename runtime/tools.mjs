@@ -8,6 +8,7 @@
 import { search } from '../memory/search.js'
 import { entryLine, findEntries, loadEntries, updateEntry } from '../memory/entries.js'
 import { buildRecallBlock } from '../memory/inject.js'
+import { anchorChangeAllowed, recordAnchorChange } from '../memory/audit.js'
 import { readAnchors, renderAnchorBlock, writeAnchorSafe } from '../memory/anchor.js'
 import { fsOp } from '../memory/fsops.js'
 import { readDay, writeDay } from '../memory/store.js'
@@ -296,7 +297,10 @@ export function createMemoryTools(service) {
     },
     run: (args) => {
       if (typeof args.content === 'string' && args.content.trim() !== '') {
+        const gate = anchorChangeAllowed(root, args.which)
+        if (gate.ok !== true) return `锚点未更新：${gate.reason ?? '今日已改过'}。`
         const result = writeAnchorSafe(root, args.which, args.content, args.mode === 'append' ? 'append' : 'replace')
+        if (result.ok === true) recordAnchorChange(root, args.which)
         return result.ok ? '锚点已更新。' : `锚点未更新：${result.reason ?? '未知原因'}。`
       }
       try {

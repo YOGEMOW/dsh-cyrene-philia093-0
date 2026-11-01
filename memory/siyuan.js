@@ -13,12 +13,12 @@
  * 本地为真相，思源为副本；失败静默重试，不影响对话。
  */
 
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { readJSON, writeJSON } from './store.js'
+import { readJSON, readTextSafe, writeJSON } from './store.js'
 import { hashText } from './parse.js'
 import { listFreeArea, planFreeSync, renderFreeContent } from './freearea.js'
-import { DAY_ROOT, DREAM_ROOT, MONTH_ROOT, YEAR_ROOT, dayRelPath } from './paths.js'
+import { ANCHOR_HISTORY_ROOT, DAY_ROOT, DREAM_ROOT, MONTH_ROOT, YEAR_ROOT, dayRelPath } from './paths.js'
 
 /** 默认配置。 */
 export const SIYUAN_DEFAULTS = {
@@ -501,6 +501,72 @@ export async function syncAnchors(cfg, root, anchors) {
     /* ignore */
   }
   state.lastSync = Date.now()
+  saveMirrorState(root, state)
+  result.ok = result.errors.length === 0
+  return result
+}
+
+/**
+ * 镜像锚点历史：`锚/历史/<key>/YYYY-MM.md` → `/一页永恒/锚/历史/<label>/YYYY-MM`。
+ * 历史只追加/重建，不参与首轮注入。
+ */
+export async function syncAnchorHistory(cfg, root) {
+  const result = { ok: false, synced: 0, skipped: 0, errors: [], notebookId: '' }
+  if (cfg.enabled !== true) return result
+  let notebook = null
+  try {
+    notebook = await findNotebook(cfg)
+  } catch (error) {
+    result.errors.push(`连接思源失败：${error instanceof Error ? error.message : String(error)}`)
+    return result
+  }
+  if (notebook === null) {
+    result.errors.push(`未找到笔记本「${cfg.notebook}」`)
+    return result
+  }
+  const labels = { self: '我是谁', user: '你是谁', origin: '来处', goal: '去处' }
+  const state = loadMirrorState(root)
+  state.anchors = state.anchors !== null && typeof state.anchors === 'object' ? state.anchors : {}
+  state.anchorHistory = state.anchorHistory !== null && typeof state.anchorHistory === 'object' ? state.anchorHistory : {}
+  for (const [key, label] of Object.entries(labels)) {
+    const dir = join(root, ...`${ANCHOR_HISTORY_ROOT}/${key}`.split('/'))
+    let names = []
+    try {
+      names = readdirSync(dir).filter((name) => name.endsWith('.md')).sort()
+    } catch {
+      continue
+    }
+    for (const name of names) {
+      const month = name.replace(/\.md$/, '')
+      try {
+        const hpath = `${cfg.rootHPath}/${ANCHOR_HISTORY_ROOT}/${label}/${month}`
+        const body = readTextSafe(join(dir, name)).trim()
+        if (body === '') continue
+        const hash = hashText(body)
+        const known = state.anchorHistory[`${key}/${month}`]
+        let docId = typeof state.docs[hpath] === 'string' ? state.docs[hpath] : ''
+        if (docId !== '' && known !== null && typeof known === 'object' && known.hash === hash) {
+          result.skipped += 1
+          continue
+        }
+        if (docId !== '') {
+          try {
+            await removeDoc(cfg, docId)
+          } catch {
+            /* ignore */
+          }
+        }
+        await ensureParentDocs(cfg, notebook.id, hpath)
+        const createdId = await createDocResilient(cfg, notebook.id, hpath, body)
+        if (typeof createdId !== 'string' || createdId === '') throw new Error('createDocWithMd 未返回文档 id')
+        state.docs[hpath] = createdId
+        state.anchorHistory[`${key}/${month}`] = { hash, docId: createdId, synced_at: Date.now() }
+        result.synced += 1
+      } catch (error) {
+        result.errors.push(`${key}/${month}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  }
   saveMirrorState(root, state)
   result.ok = result.errors.length === 0
   return result
