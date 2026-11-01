@@ -165,6 +165,35 @@ function summaryBlockOf(date, text) {
   return `卷·${date}${SUMMARY_MARK}：${text}`
 }
 
+/** 取模型/外部提供的语义摘要；没有就退回确定性 15 字。 */
+function summaryFor(block, summaries) {
+  let custom = ''
+  if (summaries instanceof Map) custom = String(summaries.get(block) ?? '')
+  else if (summaries !== null && typeof summaries === 'object') custom = String(summaries[block] ?? '')
+  const text = custom.trim() === '' ? summarizeText(block) : custom
+  return Array.from(text.replace(/\s+/g, ' ').trim()).slice(0, 15).join('')
+}
+
+/** 供语义摘要器收集：当前锚点正文 + 已归档原档（去重）。 */
+export function collectAnchorSourceBlocks(root, key) {
+  const blocks = []
+  const seen = new Set()
+  const push = (block) => {
+    const text = String(block ?? '').trim()
+    if (text === '' || text.startsWith('#') || text.startsWith('更早的卷：')) return
+    if (!SECTION_DATE_RE.test(text)) return
+    if (seen.has(text)) return
+    seen.add(text)
+    blocks.push(text)
+  }
+  const current = readAnchor(root, key)
+  for (const block of String(current.content ?? '').split(/\n{2,}/)) {
+    if (!isSummary(block)) push(block)
+  }
+  for (const item of readHistoryBlocks(root, key)) push(item.block)
+  return blocks
+}
+
 function readHistoryBlocks(root, key) {
   const dir = join(root, '锚', '历史', key)
   let names = []
@@ -183,7 +212,7 @@ function readHistoryBlocks(root, key) {
       out.push({ month, block: text, date: sectionDate(text) })
     }
   }
-  return out
+  return out.sort((a, b) => a.date.localeCompare(b.date))
 }
 
 function appendHistoryBlock(root, key, month, block) {
@@ -215,10 +244,20 @@ export function compactAnchor(root, key, options = {}) {
   const prefix = allBlocks.slice(0, datedAt)
   const sections = allBlocks.slice(datedAt).filter((block) => !block.startsWith('更早的卷：'))
   let normalized = false
+  // 有语义摘要时：按历史原档重建摘要，替换旧的 15 字截取。
+  if (options.summaries !== undefined && options.summaries !== null) {
+    const history = readHistoryBlocks(root, key)
+    if (history.length > 0) {
+      const unarchived = sections.filter((block) => !isSummary(block))
+      const rebuilt = history.map((item) => summaryBlockOf(item.date, summaryFor(item.block, options.summaries)))
+      sections.splice(0, sections.length, ...rebuilt, ...unarchived)
+      normalized = true
+    }
+  }
   for (let index = 0; index < sections.length; index += 1) {
     if (!isSummary(sections[index])) continue
     const date = sectionDate(sections[index])
-    const next = summaryBlockOf(date, summarizeText(sections[index]))
+    const next = summaryBlockOf(date, summaryFor(sections[index], options.summaries))
     if (next !== sections[index]) {
       sections[index] = next
       normalized = true
@@ -229,7 +268,7 @@ export function compactAnchor(root, key, options = {}) {
   const existingSummaries = new Set(sections.filter(isSummary).map((block) => block))
   const missingSummaries = []
   for (const item of readHistoryBlocks(root, key)) {
-    const summary = summaryBlockOf(item.date, summarizeText(item.block))
+    const summary = summaryBlockOf(item.date, summaryFor(item.block, options.summaries))
     if (existingSummaries.has(summary)) continue
     if (sections.some((block) => block === item.block)) continue
     missingSummaries.push(summary)
@@ -258,7 +297,7 @@ export function compactAnchor(root, key, options = {}) {
         const block = sections[index]
         const month = archiveMonthOf(block, options.now)
         appendHistoryBlock(root, key, month, block)
-        sections[index] = summaryBlockOf(sectionDate(block) || month, summarizeText(block))
+        sections[index] = summaryBlockOf(sectionDate(block) || month, summaryFor(block, options.summaries))
         moved += 1
       }
       continue

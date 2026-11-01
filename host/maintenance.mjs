@@ -12,7 +12,8 @@ import { appendFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { loadEntries } from '../memory/entries.js'
-import { compactAllAnchors, readAnchors } from '../memory/anchor.js'
+import { collectAnchorSourceBlocks, compactAllAnchors, readAnchors } from '../memory/anchor.js'
+import { summarizeAnchorBlocks } from './anchor-summary.mjs'
 import { monthlyAudit } from '../memory/audit.js'
 import { rollCalendars } from '../memory/rolling.js'
 import { runWatchdog } from '../memory/watchdog.js'
@@ -232,7 +233,10 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       metaLog('维护.log', `audit/roll failed ${error instanceof Error ? error.message : String(error)}`)
     }
     try {
-      const anchors = compactAllAnchors(root)
+      const blocks = []
+      for (const key of ['self', 'user', 'origin', 'goal']) blocks.push(...collectAnchorSourceBlocks(root, key))
+      const summaries = await summarizeAnchorBlocks(ctx, root, blocks)
+      const anchors = compactAllAnchors(root, { summaries })
       for (const [key, item] of Object.entries(anchors)) {
         if (item?.compacted === true) metaLog('锚点.log', `compact ${key} ${item.before}->${item.after}`)
       }

@@ -96,3 +96,20 @@ test('归档按最旧 5 条一批；摘要 ≤15 字；全部摘要后两两合�
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+test('语义摘要：外部 map 优先于确定性截取', () => {
+  const { dir, root } = setup()
+  try {
+    const block = '卷·2026-10-22：今天发生了一件很长很长的事情，需要被理解'
+    writeAnchor(root, 'self', ['核心。', block].join('\n\n'), { version: 1, updated_at: Date.now(), immutable: false })
+    const summaries = new Map([[block, '这件事让我学会慢下来']])
+    const result = compactAnchor(root, 'self', { maxChars: 30, summaries })
+    assert.equal(result.compacted, true)
+    const content = readAnchor(root, 'self').content
+    assert.match(content, /这件事让我学会慢下来/)
+    assert.equal(content.includes(block), false)
+    const history = fs.readFileSync(path.join(root, '锚', '历史', 'self', '2026-10.md'), 'utf8')
+    assert.equal(history.includes(block), true)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
