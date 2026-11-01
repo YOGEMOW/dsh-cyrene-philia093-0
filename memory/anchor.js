@@ -8,6 +8,7 @@
 import { readAnchor, writeAnchor } from './store.js'
 import { atomicWrite, readTextSafe } from './store.js'
 import { join } from 'node:path'
+import { readdirSync } from 'node:fs'
 
 /** 锚点正文上限；超出后旧的「卷·日期」段自动归档到 锚/历史/。 */
 export const ANCHOR_CORE_LIMITS = {
@@ -132,7 +133,75 @@ export function anchorHistoryPath(root, key, month) {
   return join(root, '锚', '历史', key, `${month}.md`)
 }
 
-/** 把过长的锚点正文按「卷·日期」段归档；只动 dated 段，不丢内容。 */
+const SECTION_DATE_RE = /^卷[·・]\s*(\d{4}-\d{2}-\d{2})/
+const SUMMARY_MARK = '（摘要）'
+
+function sectionDate(block) {
+  const match = SECTION_DATE_RE.exec(block)
+  return match === null ? '' : match[1]
+}
+
+function isSummary(block) {
+  return /^卷[·・]\s*\d{4}-\d{2}-\d{2}（摘要）/.test(block)
+}
+
+/** 去掉「卷·日期：」/「卷·日期（摘要）：」前缀后的正文。 */
+function plainSummaryText(block) {
+  let text = String(block ?? '')
+  for (;;) {
+    const prefix = /^卷[·・]\s*\d{4}-\d{2}-\d{2}(?:（[^）]*）)?[：:]\s*/.exec(text)
+    if (prefix === null) break
+    text = text.slice(prefix[0].length)
+  }
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+/** 确定性摘要：去掉前缀，取前 15 个字符（不调用模型）。 */
+function summarizeText(block) {
+  return Array.from(plainSummaryText(block)).slice(0, 15).join('')
+}
+
+function summaryBlockOf(date, text) {
+  return `卷·${date}${SUMMARY_MARK}：${text}`
+}
+
+function readHistoryBlocks(root, key) {
+  const dir = join(root, '锚', '历史', key)
+  let names = []
+  try {
+    names = readdirSync(dir).filter((name) => name.endsWith('.md')).sort()
+  } catch {
+    return []
+  }
+  const out = []
+  for (const name of names) {
+    const month = name.replace(/\.md$/, '')
+    for (const block of readTextSafe(join(dir, name)).split(/\n{2,}/)) {
+      const text = block.trim()
+      if (text === '' || text.startsWith('#')) continue
+      if (!SECTION_DATE_RE.test(text)) continue
+      out.push({ month, block: text, date: sectionDate(text) })
+    }
+  }
+  return out
+}
+
+function appendHistoryBlock(root, key, month, block) {
+  const file = anchorHistoryPath(root, key, month)
+  const prev = readTextSafe(file).trim()
+  if (prev.includes(block)) return false
+  const header = prev === '' ? `# ${ANCHOR_HISTORY_LABELS[key]} · 历史 ${month}\n\n` : `${prev}\n\n`
+  atomicWrite(file, `${header}${block}\n`)
+  return true
+}
+
+/**
+ * 自动锚点生命周期（0.5.1）：
+ *  1. 超上限时，归档最旧 5 条未归档「卷·日期」段，正文换成 ≤15 字摘要；
+ *  2. 仍超限，重复归档下 5 条；
+ *  3. 所有段都已摘要后仍超限，把最旧 10 条摘要两两合并成 5 条，再重复；
+ *  4. 原始段始终保存在 锚/历史/<key>/YYYY-MM.md，摘要只是索引，不丢记忆。
+ */
 export function compactAnchor(root, key, options = {}) {
   const spec = anchorSpec(key)
   if (spec === null) return { ok: false, reason: 'unknown-anchor', compacted: false }
@@ -140,46 +209,99 @@ export function compactAnchor(root, key, options = {}) {
   const current = readAnchor(root, key)
   const original = typeof current?.content === 'string' ? current.content.trim() : ''
   if (original === '') return { ok: true, compacted: false, before: 0, after: 0 }
-  const blocks = original.split(/\n{2,}/).map((block) => block.trim()).filter((block) => block !== '')
-  if (blocks.length <= 1) return { ok: true, compacted: false, before: original.length, after: original.length }
-  const datedAt = blocks.findIndex((block) => /^卷[·・]|^---\n+## 卷 /.test(block))
+  const allBlocks = original.split(/\n{2,}/).map((block) => block.trim()).filter((block) => block !== '')
+  const datedAt = allBlocks.findIndex((block) => SECTION_DATE_RE.test(block))
   if (datedAt < 0) return { ok: true, compacted: false, before: original.length, after: original.length }
-  const prefix = blocks.slice(0, datedAt)
-  const dated = blocks.slice(datedAt)
-  const history = new Map()
+  const prefix = allBlocks.slice(0, datedAt)
+  const sections = allBlocks.slice(datedAt).filter((block) => !block.startsWith('更早的卷：'))
+  let normalized = false
+  for (let index = 0; index < sections.length; index += 1) {
+    if (!isSummary(sections[index])) continue
+    const date = sectionDate(sections[index])
+    const next = summaryBlockOf(date, summarizeText(sections[index]))
+    if (next !== sections[index]) {
+      sections[index] = next
+      normalized = true
+    }
+  }
+
+  // 旧的归档记录还没有摘要的，先补摘要（摘要不丢原档）。
+  const existingSummaries = new Set(sections.filter(isSummary).map((block) => block))
+  const missingSummaries = []
+  for (const item of readHistoryBlocks(root, key)) {
+    const summary = summaryBlockOf(item.date, summarizeText(item.block))
+    if (existingSummaries.has(summary)) continue
+    if (sections.some((block) => block === item.block)) continue
+    missingSummaries.push(summary)
+    existingSummaries.add(summary)
+  }
+  if (missingSummaries.length > 0) sections.unshift(...missingSummaries)
+  if (missingSummaries.length > 0) normalized = true
+
   let moved = 0
+  let merged = 0
   const build = () => {
-    const refs = [...history.keys()].sort().map((month) => `更早的卷：锚/历史/${key}/${month}.md`)
-    return [...prefix, ...dated, ...refs].join('\n\n')
+    const months = new Set(readHistoryBlocks(root, key).map((item) => item.month))
+    const refs = [...months].sort().map((month) => `更早的卷：锚/历史/${key}/${month}.md`)
+    return [...prefix, ...sections, ...refs].join('\n\n')
   }
-  while (build().length > max && dated.length > 1) {
-    const block = dated.shift()
-    const month = archiveMonthOf(block, options.now)
-    if (!history.has(month)) history.set(month, [])
-    history.get(month).push(block)
-    moved += 1
+
+  while (build().length > max) {
+    const originalIndexes = sections
+      .map((block, index) => ({ block, index }))
+      .filter((item) => !isSummary(item.block))
+      .map((item) => item.index)
+    if (originalIndexes.length > 0) {
+      // 最旧的 5 条未归档段
+      const batch = originalIndexes.slice(0, 5)
+      for (const index of batch.slice().reverse()) {
+        const block = sections[index]
+        const month = archiveMonthOf(block, options.now)
+        appendHistoryBlock(root, key, month, block)
+        sections[index] = summaryBlockOf(sectionDate(block) || month, summarizeText(block))
+        moved += 1
+      }
+      continue
+    }
+    const summaryIndexes = sections
+      .map((block, index) => ({ block, index }))
+      .filter((item) => isSummary(item.block))
+      .map((item) => item.index)
+    if (summaryIndexes.length < 2) break
+    // 已全部摘要仍超限：最旧 10 条摘要两两合并成 5 条
+    const batch = summaryIndexes.slice(0, 10)
+    const batchSet = new Set(batch)
+    const mergedBlocks = []
+    for (let i = 0; i < batch.length; i += 2) {
+      const first = sections[batch[i]]
+      const second = batch[i + 1] === undefined ? null : sections[batch[i + 1]]
+      const date = sectionDate(first) || new Date().toISOString().slice(0, 10)
+      const text = summarizeText(`${plainSummaryText(first)}；${plainSummaryText(second ?? '')}`)
+      mergedBlocks.push(summaryBlockOf(date, text))
+    }
+    const firstPos = batch[0]
+    const rest = sections.filter((_, index) => !batchSet.has(index))
+    sections.splice(0, sections.length, ...rest.slice(0, firstPos), ...mergedBlocks, ...rest.slice(firstPos))
+    merged += batch.length - mergedBlocks.length
   }
-  if (moved === 0) return { ok: true, compacted: false, before: original.length, after: original.length }
-  // 写历史：先读已有，按块去重后追加。
-  for (const [month, list] of history) {
-    const file = anchorHistoryPath(root, key, month)
-    const prev = readTextSafe(file).trim()
-    const header = prev === ''
-      ? `# ${ANCHOR_HISTORY_LABELS[key]} · 历史 ${month}\n\n`
-      : `${prev}\n\n`
-    const fresh = list.filter((block) => !prev.includes(block))
-    if (fresh.length === 0) continue
-    atomicWrite(file, `${header}${fresh.join('\n\n')}\n`)
-  }
+
   const next = build()
-  // 压缩不是语义变更：保持原版本与更新时间，只让正文变短。
+  if (next === original) return { ok: true, compacted: false, before: original.length, after: original.length }
   writeAnchor(root, key, next, {
     ...(current.meta && typeof current.meta === 'object' ? current.meta : {}),
     version: Number(current?.meta?.version ?? 1),
     updated_at: current?.meta?.updated_at ?? Date.now(),
     immutable: current?.meta?.immutable === true
   })
-  return { ok: true, compacted: true, before: original.length, after: next.length, moved, history: [...history.keys()].sort() }
+  return {
+    ok: true,
+    compacted: true,
+    before: original.length,
+    after: next.length,
+    moved,
+    merged,
+    history: [...new Set(readHistoryBlocks(root, key).map((item) => item.month))].sort()
+  }
 }
 
 /** 维护 tick 兜底：四问锚点各自检查一次（短锚点不会产生历史）。 */

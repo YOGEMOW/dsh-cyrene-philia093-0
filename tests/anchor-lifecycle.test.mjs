@@ -66,3 +66,33 @@ test('历史只在真正压缩时产生；短锚点不动', () => {
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('归档按最旧 5 条一批；摘要 ≤15 字；全部摘要后两两合并', () => {
+  const { dir, root } = setup()
+  try {
+    const core = '我是谁：一个还在学习的人。'
+    const blocks = Array.from({ length: 10 }, (_, i) => `卷·2026-10-${String(10 + i).padStart(2, '0')}：${'经历'.repeat(20)}`)
+    writeAnchor(root, 'self', [core, ...blocks].join('\n\n'), { version: 1, updated_at: Date.now(), immutable: false })
+    const first = compactAnchor(root, 'self', { maxChars: 300 })
+    assert.ok(first.compacted === true, '应发生压缩')
+    assert.ok(first.moved >= 5, `第一批应至少归档 5 条，实际 ${first.moved}`)
+    const anchor = readAnchor(root, 'self').content
+    const summaries = anchor.split('\n\n').filter((line) => line.includes('（摘要）'))
+    assert.ok(summaries.length >= 5)
+    for (const line of summaries) {
+      const text = line.split('：').slice(1).join('：')
+      assert.ok(Array.from(text).length <= 15, `摘要超过 15 字：${line}`)
+    }
+    const historyFile = path.join(root, '锚', '历史', 'self', '2026-10.md')
+    assert.match(fs.readFileSync(historyFile, 'utf8'), /卷·2026-10-10/)
+
+    // 全部已摘要、仍超限时：最旧 10 条摘要两两合并。
+    const many = [core, ...Array.from({ length: 12 }, (_, i) => `卷·2026-11-${String(10 + i).padStart(2, '0')}（摘要）：第${i}段`)].join('\n\n')
+    writeAnchor(root, 'self', many, { version: 1, updated_at: Date.now(), immutable: false })
+    const merged = compactAnchor(root, 'self', { maxChars: 120 })
+    assert.equal(merged.compacted, true)
+    assert.ok(merged.merged >= 5, `应发生摘要合并，实际 ${merged.merged}`)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
