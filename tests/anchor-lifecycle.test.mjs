@@ -21,7 +21,7 @@ test('锚点生命周期：超过 420 字时把旧「卷·日期」归档到 锚
     const blocks = Array.from({ length: 6 }, (_, i) => `卷·2026-10-${String(10 + i).padStart(2, '0')}：${'经历'.repeat(30)}`)
     const content = ['我是谁：一个正在学习的人。', ...blocks].join('\n\n')
     writeAnchor(root, 'self', content, { version: 1, updated_at: Date.now(), immutable: false })
-    const result = compactAnchor(root, 'self')
+    const result = compactAnchor(root, 'self', { maxChars: 420 })
     assert.equal(result.compacted, true)
     assert.ok(result.after <= 420, `压缩后 ${result.after} 字仍超限`)
     const anchor = readAnchor(root, 'self')

@@ -16,6 +16,7 @@ const ALLOWED = {
   siyuan: ['enabled', 'baseURL', 'notebook', 'rootHPath', 'tokenEnv', 'timeoutMs', 'createNotebook'],
   backup: ['enabled', 'intervalMinutes', 'snapshotHour', 'keep'],
   dream: ['enabled', 'time', 'timeZone', 'maxScheduledSessions'],
+  anchor: ['self', 'user', 'origin', 'goal', 'renderChars', 'readChars', 'snapshotChars'],
   root: ['hitTopK', 'recallBudget', 'quotaMB', 'freeQuotaMB'],
 }
 
@@ -32,7 +33,7 @@ export function readSettings(root) {
 export function sanitizeSettings(patch) {
   const source = patch !== null && typeof patch === 'object' && !Array.isArray(patch) ? patch : {}
   const out = {}
-  for (const section of ['siyuan', 'backup', 'dream']) {
+  for (const section of ['siyuan', 'backup', 'dream', 'anchor']) {
     const value = source[section]
     if (value === null || typeof value !== 'object' || Array.isArray(value)) continue
     const picked = {}

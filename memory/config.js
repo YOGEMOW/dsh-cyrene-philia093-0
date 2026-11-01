@@ -31,6 +31,16 @@ export const DEFAULTS = {
   deductConfirmed: false,
   /** 语言（Phase 0 只有 zh 文案）。 */
   lang: 'zh',
+  /** 四问锚点：核心上限（字）/ 注入读取 / 快照预算。 */
+  anchor: {
+    self: 800,
+    user: 600,
+    origin: 400,
+    goal: 600,
+    renderChars: 1200,
+    readChars: 2000,
+    snapshotChars: 3200
+  },
   /** 夜梦：每天定时唤起一个会话整理记忆。 */
   dream: {
     enabled: true,
@@ -86,6 +96,7 @@ export function resolveConfig(raw) {
   const c = raw !== null && typeof raw === 'object' ? raw : {}
   const d = c.dream !== null && typeof c.dream === 'object' ? c.dream : {}
   const b = c.backup !== null && typeof c.backup === 'object' ? c.backup : {}
+  const a = c.anchor !== null && typeof c.anchor === 'object' ? c.anchor : {}
   return {
     enabled: bool(c.enabled, DEFAULTS.enabled),
     rootDir: typeof c.rootDir === 'string' ? c.rootDir.trim() : DEFAULTS.rootDir,
@@ -99,6 +110,15 @@ export function resolveConfig(raw) {
     softWarnRatio: num(c.softWarnRatio, DEFAULTS.softWarnRatio, 0.5, 0.99),
     deductConfirmed: bool(c.deductConfirmed, DEFAULTS.deductConfirmed),
     lang: typeof c.lang === 'string' && c.lang.trim() !== '' ? c.lang.trim() : DEFAULTS.lang,
+    anchor: {
+      self: Math.round(num(a.self, DEFAULTS.anchor.self, 200, 3000)),
+      user: Math.round(num(a.user, DEFAULTS.anchor.user, 200, 2000)),
+      origin: Math.round(num(a.origin, DEFAULTS.anchor.origin, 120, 1200)),
+      goal: Math.round(num(a.goal, DEFAULTS.anchor.goal, 200, 2000)),
+      renderChars: Math.round(num(a.renderChars, DEFAULTS.anchor.renderChars, 300, 4000)),
+      readChars: Math.round(num(a.readChars, DEFAULTS.anchor.readChars, 300, 6000)),
+      snapshotChars: Math.round(num(a.snapshotChars, DEFAULTS.anchor.snapshotChars, 800, 6000))
+    },
     dream: {
       enabled: bool(d.enabled, DEFAULTS.dream.enabled),
       time: timeOf(d.time, DEFAULTS.dream.time),

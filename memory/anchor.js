@@ -12,10 +12,10 @@ import { readdirSync } from 'node:fs'
 
 /** 锚点正文上限；超出后旧的「卷·日期」段自动归档到 锚/历史/。 */
 export const ANCHOR_CORE_LIMITS = {
-  self: 420,
-  user: 300,
-  origin: 240,
-  goal: 300
+  self: 800,
+  user: 600,
+  origin: 400,
+  goal: 600
 }
 
 const ANCHOR_HISTORY_LABELS = {
@@ -91,7 +91,7 @@ export function renderAnchorBlock(anchors, maxChars = 520) {
  * @param mode - 'replace'|'append'。
  * @returns { ok, reason? }
  */
-export function writeAnchorSafe(root, key, content, mode = 'replace') {
+export function writeAnchorSafe(root, key, content, mode = 'replace', options = {}) {
   const spec = anchorSpec(key)
   if (spec === null) return { ok: false, reason: 'unknown-anchor' }
   const text = typeof content === 'string' ? content.trim() : ''
@@ -116,7 +116,7 @@ export function writeAnchorSafe(root, key, content, mode = 'replace') {
     updated_at: Date.now(),
     immutable: false
   })
-  const compacted = compactAnchor(root, key)
+  const compacted = compactAnchor(root, key, options)
   return { ok: true, appended: mode === 'append', compacted }
 }
 
@@ -234,7 +234,7 @@ function appendHistoryBlock(root, key, month, block) {
 export function compactAnchor(root, key, options = {}) {
   const spec = anchorSpec(key)
   if (spec === null) return { ok: false, reason: 'unknown-anchor', compacted: false }
-  const max = Number(options.maxChars ?? ANCHOR_CORE_LIMITS[key] ?? 420)
+  const max = Number(options.maxChars ?? options.limits?.[key] ?? ANCHOR_CORE_LIMITS[key] ?? 800)
   const current = readAnchor(root, key)
   const original = typeof current?.content === 'string' ? current.content.trim() : ''
   if (original === '') return { ok: true, compacted: false, before: 0, after: 0 }

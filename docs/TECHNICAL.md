@@ -5,7 +5,7 @@
 
 ## 1. 项目是什么
 
-- 包名：`dsh-cyrene-philia093-0`，版本 `0.5.2`。
+- 包名：`dsh-cyrene-philia093-0`，版本 `0.6.0`。
 - 类型：**纯 Bundle 插件**（不含客户端构建链、无第三方运行时依赖），随 DSH `>=0.2.1-rc.2` 运行。
 - 入口：`host/index.mjs`（宿主行）＋ `cordis.patch.yml`（两个预设声明）。
 - 合并并取代：`dsh-cyrene` 0.6.3 与 `dsh-cyrene-eternal-page-remembrance` 0.5.4。
@@ -163,9 +163,10 @@ npm run migrate -- --dry-run
   异常写 `元/看门狗.log`，状态进 `service.maintenance.status().watchdog`。
 - `scripts/migrate-layout.mjs`：0.3.x → 0.4.0 布局迁移，默认 dry-run，`--apply` 执行；改写条目
   `path`，让索引/思源缓存下次重建。旧目录清空后移除。
-- 锚点生命周期：`memory/anchor.js` 的 `compactAnchor` 在正文超过核心上限（`self` 420 字，其余
-  300/240/300）时，按**最旧 5 条**归档「卷·日期」段到 `锚/历史/<key>/YYYY-MM.md`，正文对应位置
-  写 ≤15 字确定性摘要；仍超限继续下一批 5 条；全是摘要后再把最旧 10 条摘要两两合并成 5 条，
+- 锚点生命周期：`memory/anchor.js` 的 `compactAnchor` 在正文超过核心上限（`self` 800 字，其余
+  600/400/600；可在 `元/settings.json` 的 `anchor` 调整）时，按**最旧 5 条**归档「卷·日期」段到
+  `锚/历史/<key>/YYYY-MM.md`，正文对应位置
+  写 ≤15 字语义摘要；仍超限继续下一批 5 条；全是摘要后再把最旧 10 条摘要两两合并成 5 条，
   重复直到符合上限。原始段始终在历史文件中，不丢记忆。`writeAnchorSafe` 写入后自动压缩，
   维护 tick 兜底；`anchorChangeAllowed`（self/user/goal 每日 1 次、origin 每周 1 次）由
   `memory_anchor` 工具执行，`recordAnchorChange` 记录；历史镜像到

@@ -126,7 +126,7 @@ cyrene 保留 `context` order 区间 **100–199**；区间外不得占用。
 - 写入：原子替换（tmp+rename；优先复用 `@deepseek-ai/dsh-atomic-write`，不可解析时用 `memory/store.js` 内置实现）；读-改-写走锁或进程内串行；文件权限 0600。
 - `元/` 不对模型开放；`base: true` 条目只能由人修改（工具层直接拒绝）。
 - 配额默认：全目录 128 MB，余页 64 MB；单条正文 ≤ 400 字；单条注入文本 ≤ 1200 字。
-- 锚点正文核心上限：`self` 420 字、`user`/`goal` 300 字、`origin` 240 字；超出时旧
+- 锚点正文核心上限默认：`self` 800 字、`user`/`goal` 600 字、`origin` 400 字（可在 `元/settings.json` 的 `anchor` 调）；超出时旧
   `卷·日期` 段归档到 `锚/历史/<key>/YYYY-MM.md`，正文保留核心与「更早的卷」引用。
   写入节律：`self/user/goal` 每日 1 次、`origin` 每周 1 次，由 `memory_anchor` 工具执行并记录审计。
 

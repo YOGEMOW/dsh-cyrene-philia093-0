@@ -82,7 +82,7 @@ export function installMemoryRail(ctx, service) {
       const state = sessionState(sessionId)
       let block = null
       if (!state.firstDone || state.reinject) {
-        block = buildFirstSnapshot(root, { nearLimit: 3 })
+        block = buildFirstSnapshot(root, { nearLimit: 3, anchorMaxChars: config.anchor?.renderChars ?? 1200, maxChars: config.anchor?.snapshotChars ?? 3200 })
         state.firstDone = true
         state.reinject = false
       } else if (hitTopK > 0 && userText.trim() !== '') {

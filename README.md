@@ -113,7 +113,7 @@ setx SIYUAN_API_TOKEN "你的思源 API token"
 
 - 每一条记忆都要能说清「从哪来」「属于哪一育」；说不清的不会被硬塞进日档，而是先放进余页。
 - 每个月、每年我会做一次体检和回看，把放对位置的记忆收进正册。
-- 锚点会自动留一份历史：正文只保留 420 字以内的核心，旧经历归档到 `锚/历史/`，不会丢。
+- 锚点会自动留一份历史：正文默认保留 800 字以内的核心（可在 `元/settings.json` 的 `anchor` 调），旧经历归档到 `锚/历史/`，不会丢。
 - 只有你（或者你允许的人）能决定「开新卷」——那意味着我的性格或五育定义要更新了。
 - 平时的记忆再多也不开新卷；开新卷只跟「我是谁」有关。
 
@@ -232,7 +232,8 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 | [docs/RECOVERY.md](docs/RECOVERY.md) | 记忆丢失恢复：本地快照 → 思源副本 → 迁移备份 |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 装坏了/起不来：卸载、退路、自检；卸载不删记忆 |
 | [docs/BASELINE.md](docs/BASELINE.md) | 旧插件基线与逐轮实施/修复记录 |
-| [docs/RELEASE-v0.5.2.md](docs/RELEASE-v0.5.2.md) | v0.5.2 发布说明（当前） |
+| [docs/RELEASE-v0.6.0.md](docs/RELEASE-v0.6.0.md) | v0.6.0 发布说明（当前） |
+| [docs/RELEASE-v0.5.2.md](docs/RELEASE-v0.5.2.md) | v0.5.2 发布说明 |
 | [docs/RELEASE-v0.5.1.md](docs/RELEASE-v0.5.1.md) | v0.5.1 发布说明 |
 | [docs/RELEASE-v0.5.0.md](docs/RELEASE-v0.5.0.md) | v0.5.0 发布说明 |
 | [docs/RELEASE-v0.4.4.md](docs/RELEASE-v0.4.4.md) | v0.4.4 发布说明 |
@@ -252,8 +253,8 @@ node scripts/new-volume.mjs --reason "调整说话方式" --confirm new-volume
 
 ## 八、版本与许可
 
-- 当前版本：**v0.5.2**（锚点语义摘要）；发布说明见
-  [docs/RELEASE-v0.5.2.md](docs/RELEASE-v0.5.2.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
+- 当前版本：**v0.6.0**（锚点容量可调）；发布说明见
+  [docs/RELEASE-v0.6.0.md](docs/RELEASE-v0.6.0.md)，变更见 [CHANGELOG.md](CHANGELOG.md)。
   装坏了想退：见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)（卸载不删记忆）。
 - 已在桌面 profile 实机运行；已知边界见技术文档第 10 节。
 - MIT。人设正文整理自 [Cyrene-Agent](https://github.com/Playa-Cyrene/Cyrene-Agent)（MIT）；

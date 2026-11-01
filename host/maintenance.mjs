@@ -236,7 +236,7 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       const blocks = []
       for (const key of ['self', 'user', 'origin', 'goal']) blocks.push(...collectAnchorSourceBlocks(root, key))
       const summaries = await summarizeAnchorBlocks(ctx, root, blocks)
-      const anchors = compactAllAnchors(root, { summaries })
+      const anchors = compactAllAnchors(root, { summaries, limits: cfg?.anchor })
       for (const [key, item] of Object.entries(anchors)) {
         if (item?.compacted === true) metaLog('锚点.log', `compact ${key} ${item.before}->${item.after}`)
       }
