@@ -389,6 +389,45 @@ async function dedupeDocsByHPath(cfg, hpath, preferredId = '') {
   }
 }
 
+/**
+ * 为本地每一天（含没有条目的空日）确保思源日档文档存在。
+ * 条目同步只覆盖有 Entry 的日子；空日也要在思源里留一页，避免“日档缺了”。
+ */
+export async function syncDayShells(cfg, root, days) {
+  const result = { ok: false, synced: 0, skipped: 0, errors: [], notebookId: '' }
+  if (cfg.enabled !== true) return result
+  let notebook = null
+  try {
+    notebook = await findNotebook(cfg)
+  } catch (error) {
+    result.errors.push(`连接思源失败：${error instanceof Error ? error.message : String(error)}`)
+    return result
+  }
+  if (notebook === null) {
+    result.errors.push(`未找到笔记本「${cfg.notebook}」`)
+    return result
+  }
+  result.notebookId = notebook.id
+  for (const day of Array.isArray(days) ? days : []) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day))) continue
+    try {
+      const hpath = docHPath(cfg, { day })
+      const existing = await findDocId(cfg, notebook.id, hpath)
+      if (existing !== null) {
+        result.skipped += 1
+        continue
+      }
+      await ensureParentDocs(cfg, notebook.id, hpath)
+      await ensureDoc(cfg, notebook.id, hpath, '（这一天没有写入记忆）\n')
+      result.synced += 1
+    } catch (error) {
+      result.errors.push(`${day}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  result.ok = result.errors.length === 0
+  return result
+}
+
 export async function syncAnchors(cfg, root, anchors) {
   const result = { ok: false, synced: 0, errors: [], notebookId: '' }
   if (cfg.enabled !== true) return result

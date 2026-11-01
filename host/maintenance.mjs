@@ -24,11 +24,12 @@ import {
   resolveSiYuanConfig,
   syncAnchors,
   syncArchives,
+  syncDayShells,
   syncEntries,
   syncFreeArea,
   syncJournal,
 } from '../memory/siyuan.js'
-import { readTextSafe } from '../memory/store.js'
+import { listDays, readTextSafe } from '../memory/store.js'
 import { absPath, DREAM_ROOT, MONTH_ROOT, YEAR_ROOT } from '../memory/paths.js'
 
 const DEFAULT_INTERVAL_MINUTES = 30
@@ -126,6 +127,11 @@ export function installMaintenance(ctx, service, rawSiyuan) {
         return entry.day >= cut
       })
       if (recent.length > 0) await syncEntries(siyuan, root, recent)
+      try {
+        await syncDayShells(siyuan, root, listDays(root))
+      } catch {
+        /* 空日壳失败不阻塞 */
+      }
       const anchors = readAnchors(root)
       if (anchors !== undefined) await syncAnchors(siyuan, root, anchors)
       try {
