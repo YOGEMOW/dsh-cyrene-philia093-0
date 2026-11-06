@@ -162,3 +162,11 @@ test('人设与上游提取工具一致（旧仓库在场时逐字校验）', as
   }
   assert.equal(fs.existsSync(script), true)
 })
+
+test('base 快照不含 DSH 0.2.2-rc.1 已移除的 list-agents 子路径', () => {
+  for (const name of ['cordis.plugins.json', 'standard.plugins.json']) {
+    const text = read(path.posix.join('modes', 'base', name))
+    assert.equal(text.includes('dsh-tool-subagent-control/list-agents'), false, `${name} 仍引用已移除的 list-agents`)
+    assert.equal(text.includes('"id": "tool-subagent-list-agents"'), false, `${name} 仍保留 list-agents 行`)
+  }
+})

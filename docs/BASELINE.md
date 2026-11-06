@@ -76,7 +76,8 @@
   - `--check` 与源逐字一致。
 - 内置 base 快照：`modes/base/standard.plugins.json`（22 行）、`cordis.plugins.json`（23 行），
   来自 `app.asar:/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/*.patch.yml`，`dshVersion = 0.2.1-rc.2`；
-  `!!js` 表达式保存为 `{"$js": "..."}`。
+  `!!js` 表达式保存为 `{"$js": "..."}`。2026-11-06 适配 DSH `0.2.2-rc.1`：移除已删除的
+  `list-agents` 子路径行。
 - 构建：`scripts/build.mjs` 生成 `cordis.patch.yml`（54 KB，2 个预设声明）；
   PyYAML 校验通过；声明对象与渲染后 YAML **逐字段 round-trip 一致**（开发期校验，不入库）。
 - 测试：`tests/build.test.mjs` 7 项通过（生成一致、预设元数据、sealed persona、能力行与快照一致、

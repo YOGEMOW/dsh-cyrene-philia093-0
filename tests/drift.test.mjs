@@ -41,7 +41,7 @@ const fakeAgentPresets = (documents) => ({
 test('快照 id 提取：含组内子行；文档扫描只认行首 - id:', () => {
   const snapshot = loadSnapshot('standard')
   const ids = snapshotIds(snapshot)
-  assert.equal(ids.length, 32)
+  assert.equal(ids.length, 31)
   assert.equal(ids.includes('tool-fs'), true)
   assert.equal(ids.includes('compaction-basic'), true)
 
@@ -60,7 +60,7 @@ test('单预设对比：一致 / 缺行 / 多行', async () => {
   const ok = await checkPresetDrift(fakeAgentPresets({ standard: documentFor('standard') }), 'standard')
   assert.equal(ok.ok, true)
   assert.equal(ok.missing.length, 0)
-  assert.equal(ok.live, 32)
+  assert.equal(ok.live, 31)
 
   const missing = await checkPresetDrift(fakeAgentPresets({ standard: documentFor('standard', { dropId: 'tool-fs' }) }), 'standard')
   assert.equal(missing.ok, false)
