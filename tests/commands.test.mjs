@@ -65,6 +65,7 @@ test('注册三个命令；doctor 输出根目录/档位/待定/漂移', async (
     })
     installCommands(ctx, service, '0.1.0')
     assert.deepEqual(ctx.defs.map((d) => d.name), ['cyrene', 'memory', 'dream'])
+    for (const def of ctx.defs) assert.ok(typeof def.input?.hint === 'string' && def.input.hint.length > 0, '命令 ' + def.name + ' 的 input.hint 不能为空')
 
     const doctor = await ctx.defs[0].handler({ rawInput: 'doctor', agent: { session: { header: {} } } })
     assert.equal(doctor.kind, 'success')

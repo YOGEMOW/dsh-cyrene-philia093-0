@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.2] — 2026-11-06
+
+- 适配 DSH `0.2.2-rc.1`：命令 `input.hint` 不能为空，修复 `/memory` 注册失败
+  （`command "memory" input hint must not be empty`）；新增命令 hint 回归断言。
+- 测试：209 项。
+
 ## [0.6.1] — 2026-11-01
 
 - 补中文命令：`/cyrene 记忆` = `/memory`，`/cyrene 整理` = `/dream`；`/cyrene 月响` 继续负责月/年档。

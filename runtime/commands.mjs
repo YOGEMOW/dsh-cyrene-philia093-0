@@ -363,7 +363,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
     {
       name: 'memory',
       description: '一页永恒记忆概览：四问锚点 + 五育统计 + 待定 + 最近条目',
-      input: { hint: '' },
+      input: { hint: '四问锚点｜五育统计｜最近记忆' },
       handler: () => ({ kind: 'success', text: memoryText({ service }) }),
     },
     {
