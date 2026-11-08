@@ -220,13 +220,15 @@ function statePath(root) {
 /** 读状态。 */
 export function loadMirrorState(root) {
   const state = readJSON(statePath(root), null)
-  if (state === null || typeof state !== 'object') return { notebookId: '', docs: {}, blocks: {}, journals: {}, anchors: {}, free: {}, lastSync: 0, error: '' }
+  if (state === null || typeof state !== 'object') return { notebookId: '', docs: {}, blocks: {}, journals: {}, anchors: {}, archives: {}, anchorHistory: {}, free: {}, lastSync: 0, error: '' }
   return {
     notebookId: typeof state.notebookId === 'string' ? state.notebookId : '',
     docs: state.docs !== null && typeof state.docs === 'object' ? state.docs : {},
     blocks: state.blocks !== null && typeof state.blocks === 'object' ? state.blocks : {},
     journals: state.journals !== null && typeof state.journals === 'object' ? state.journals : {},
     anchors: state.anchors !== null && typeof state.anchors === 'object' ? state.anchors : {},
+    archives: state.archives !== null && typeof state.archives === 'object' ? state.archives : {},
+    anchorHistory: state.anchorHistory !== null && typeof state.anchorHistory === 'object' ? state.anchorHistory : {},
     free: state.free !== null && typeof state.free === 'object' ? state.free : {},
     freeLegacyDone: typeof state.freeLegacyDone === 'string' ? state.freeLegacyDone : '',
     lastSync: Number(state.lastSync) || 0,

@@ -119,7 +119,7 @@ export function installMaintenance(ctx, service, rawSiyuan) {
   }
 
   /** 思源镜像：锚点 + 近 3 天条目 + 近 7 天梦志 + 余页。 */
-  const runMirror = async () => {
+  const runMirrorOnce = async () => {
     if (siyuan.enabled !== true) return { ok: true, skipped: true }
     try {
       const entries = loadEntries(root).entries.filter((entry) => entry?.sync !== false)
@@ -175,6 +175,17 @@ export function installMaintenance(ctx, service, rawSiyuan) {
       logMirror(root, `tick failed ${lastMirrorError}`)
       return { ok: false, error: lastMirrorError }
     }
+  }
+
+  // 合并并发镜像请求：debounced flush 与 30 分钟 tick 可能同时到达，避免状态互相覆盖。
+  let mirrorPending = null
+  const runMirror = () => {
+    if (mirrorPending !== null) return mirrorPending
+    const pending = runMirrorOnce().finally(() => {
+      if (mirrorPending === pending) mirrorPending = null
+    })
+    mirrorPending = pending
+    return pending
   }
 
   /** 每日快照 + 骨架维护；force=true 时忽略时点与"今天已备"限制（面板/命令手动触发）。 */

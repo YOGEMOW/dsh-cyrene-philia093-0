@@ -1,7 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
-import { archiveHPath, normalizeArchiveBody, normalizeJournalBody } from '../memory/siyuan.js'
+import { archiveHPath, loadMirrorState, normalizeArchiveBody, normalizeJournalBody, saveMirrorState } from '../memory/siyuan.js'
+import { ensureTree } from '../memory/store.js'
 
 test('梦志正文归一：去掉文件自带标题，避免标题重复', () => {
   const raw = '# 2026-10-18 · 夜梦\n\n新增 2 条。\n\n五育体检——\n德：……\n'
@@ -43,4 +47,20 @@ test('月/年档 hpath 与正文归一', () => {
   assert.equal(body.startsWith('# '), false)
   assert.match(body, /^## 主题：德/)
   assert.match(body, /内容/)
+})
+test('镜像状态：archives / anchorHistory 保存后不会丢（防止每 tick 重建文档）', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'philia-siyuan-state-'))
+  const root = path.join(dir, 'root')
+  ensureTree(root)
+  try {
+    const state = loadMirrorState(root)
+    state.archives['month/2026-10'] = { hash: 'a', docId: 'doc-1' }
+    state.anchorHistory['self/2026-10'] = { hash: 'b', docId: 'doc-2' }
+    saveMirrorState(root, state)
+    const loaded = loadMirrorState(root)
+    assert.equal(loaded.archives['month/2026-10'].docId, 'doc-1')
+    assert.equal(loaded.anchorHistory['self/2026-10'].docId, 'doc-2')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 })
