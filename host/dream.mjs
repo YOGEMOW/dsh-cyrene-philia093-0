@@ -96,6 +96,53 @@ export function installDream(ctx, service) {
     }
   }
 
+  // DSH 0.2.2 起 schedule API 改为 request 对象 + edit()；旧版是 (sessionId, spec) + delete()。
+  const usesModernSchedule = (svc) => typeof svc?.edit === 'function' || typeof svc?.catalog === 'function'
+  const scheduleTargetOf = (task) => String(task?.target?.sessionId ?? task?.sessionId ?? '')
+  const scheduleIdOf = (task) => String(task?.id ?? task?.taskId ?? '')
+
+  const listDreamTasks = async (svc, sessionId) => {
+    if (typeof svc?.list !== 'function') return []
+    if (usesModernSchedule(svc)) {
+      const got = await svc.list({ limit: 200 })
+      const items = Array.isArray(got) ? got : Array.isArray(got?.items) ? got.items : []
+      return items.filter((task) => task?.title === DREAM_TITLE && scheduleTargetOf(task) === sessionId)
+    }
+    const got = await svc.list({ sessionId })
+    return Array.isArray(got) ? got.filter((task) => task?.title === DREAM_TITLE) : []
+  }
+
+  const deleteScheduleTask = async (svc, sessionId, id) => {
+    if (typeof svc?.edit === 'function') return svc.edit({ id, action: 'delete' })
+    if (typeof svc?.delete === 'function') return svc.delete({ sessionId, id })
+    throw new Error('schedule delete/edit unavailable')
+  }
+
+  const updateScheduleTiming = async (svc, sessionId, id, existing) => {
+    const timing = { kind: 'daily', daily: { time: cfg.dream.time, time_zone: cfg.dream.timeZone } }
+    if (typeof svc?.edit === 'function') return svc.edit({ id, action: 'update', patch: { timing } })
+    if (typeof svc?.update === 'function') {
+      return svc.update({ sessionId, id, expected: existing, change: timing })
+    }
+    throw new Error('schedule update/edit unavailable')
+  }
+
+  const createDreamTask = async (svc, sessionId) => {
+    if (usesModernSchedule(svc)) {
+      return svc.create({
+        title: DREAM_TITLE,
+        prompt: DREAM_TRIGGER_TEXT,
+        timing: { kind: 'daily', daily: { time: cfg.dream.time, time_zone: cfg.dream.timeZone } },
+        target: { kind: 'session', sessionId },
+      })
+    }
+    return svc.create(sessionId, {
+      title: DREAM_TITLE,
+      prompt: DREAM_TRIGGER_TEXT,
+      daily: { time: cfg.dream.time, time_zone: cfg.dream.timeZone },
+    })
+  }
+
   /** 活着的昔涟 agents，按会话创建时间从新到旧。 */
   const liveCyreneAgents = () => {
     try {
@@ -153,14 +200,14 @@ export function installDream(ctx, service) {
    */
   const pruneSchedules = async (keepIds = []) => {
     const svc = scheduleService()
-    if (svc === null || typeof svc.delete !== 'function') return
+    if (svc === null) return
     const entries = Object.entries(state.schedules ?? {})
     if (entries.length === 0) return
     const keep = new Set((Array.isArray(keepIds) ? keepIds : [keepIds]).map(String).filter((sid) => sid !== ''))
     for (const [sid, record] of entries) {
       if (keep.has(sid)) continue
       try {
-        if (record?.id !== undefined && record.id !== '') await svc.delete({ sessionId: sid, id: record.id })
+        if (record?.id !== undefined && record.id !== '') await deleteScheduleTask(svc, sid, record.id)
         logMeta('日程.log', `prune stale session=${sid} id=${record?.id ?? ''}`)
       } catch (error) {
         logMeta('日程.log', `prune failed session=${sid} ${error instanceof Error ? error.message : String(error)}`)
@@ -183,11 +230,11 @@ export function installDream(ctx, service) {
   const removeSchedule = async (sessionId) => {
     const sid = String(sessionId ?? '')
     const svc = scheduleService()
-    if (sid === '' || svc === null || typeof svc.delete !== 'function') return
+    if (sid === '' || svc === null) return
     const record = state.schedules?.[sid]
     if (record === undefined) return
     try {
-      if (record.id !== undefined && record.id !== '') await svc.delete({ sessionId: sid, id: record.id })
+      if (record.id !== undefined && record.id !== '') await deleteScheduleTask(svc, sid, record.id)
     } catch (error) {
       logMeta('日程.log', `delete failed session=${sid} ${error instanceof Error ? error.message : String(error)}`)
       return
@@ -197,7 +244,7 @@ export function installDream(ctx, service) {
   }
 
   /** 确保某个会话有每日夜梦任务（幂等）。 */
-  const ensureSchedule = async (sessionId) => {
+  const ensureScheduleOnce = async (sessionId) => {
     const sid = String(sessionId ?? '')
     if (sid === '') return
     const svc = scheduleService()
@@ -206,15 +253,11 @@ export function installDream(ctx, service) {
       return
     }
     try {
-      let list = []
-      if (typeof svc.list === 'function') {
-        const got = await svc.list({ sessionId: sid })
-        if (Array.isArray(got)) list = got
-      }
+      const list = await listDreamTasks(svc, sid)
       const mine = list.filter((task) => task?.title === DREAM_TITLE)
       for (const extra of mine.slice(1)) {
         try {
-          if (typeof svc.delete === 'function') await svc.delete({ sessionId: sid, id: extra.id })
+          if (scheduleIdOf(extra) !== '') await deleteScheduleTask(svc, sid, scheduleIdOf(extra))
         } catch {
           /* ignore */
         }
@@ -234,36 +277,25 @@ export function installDream(ctx, service) {
           await pruneSchedules(desiredScheduleIds())
           return
         }
-        if (typeof svc.update === 'function') {
-          const result = await svc.update({
-            sessionId: sid,
-            id: existing.id,
-            expected: existing,
-            change: { kind: 'daily', daily: { time: cfg.dream.time, time_zone: cfg.dream.timeZone } },
-          })
-          if (result?.updated === true) {
-            state.schedules[sid] = { id: existing.id, createdAt: Date.now() }
-            saveDreamState(root, state)
-            await pruneSchedules(desiredScheduleIds())
-            return
-          }
-          logMeta('日程.log', `update failed code=${result?.code ?? 'unknown'}; recreate session=${sid} id=${existing.id}`)
+        const result = await updateScheduleTiming(svc, sid, scheduleIdOf(existing), existing)
+        if (result?.updated === true || (typeof result?.id === 'string' && result?.code === undefined)) {
+          state.schedules[sid] = { id: scheduleIdOf(existing), createdAt: Date.now() }
+          saveDreamState(root, state)
+          await pruneSchedules(desiredScheduleIds())
+          return
         }
-        if (typeof svc.delete === 'function') await svc.delete({ sessionId: sid, id: existing.id })
+        logMeta('日程.log', `update failed code=${result?.code ?? 'unknown'}; recreate session=${sid} id=${scheduleIdOf(existing)}`)
+        await deleteScheduleTask(svc, sid, scheduleIdOf(existing))
       }
-      const created = await svc.create(sid, {
-        title: DREAM_TITLE,
-        prompt: DREAM_TRIGGER_TEXT,
-        daily: { time: cfg.dream.time, time_zone: cfg.dream.timeZone },
-      })
-      const id = typeof created === 'string' ? created : String(created?.id ?? created?.taskId ?? '')
+      const created = await createDreamTask(svc, sid)
+      const id = typeof created === 'string' ? created : scheduleIdOf(created)
       state.schedules[sid] = { id, createdAt: Date.now() }
       await pruneSchedules(desiredScheduleIds())
       const ordered = Object.entries(state.schedules).sort((a, b) => (a[1]?.createdAt ?? 0) - (b[1]?.createdAt ?? 0))
       while (ordered.length > (cfg.dream.maxScheduledSessions ?? 3)) {
         const [oldSid, old] = ordered.shift()
         try {
-          if (old?.id !== '' && typeof svc.delete === 'function') await svc.delete({ sessionId: oldSid, id: old.id })
+          if (old?.id !== '' && old?.id !== undefined) await deleteScheduleTask(svc, oldSid, old.id)
         } catch {
           /* ignore */
         }
@@ -274,6 +306,20 @@ export function installDream(ctx, service) {
     } catch (error) {
       logMeta('日程.log', `create failed session=${sid} ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+
+  // 同一会话的 ensureSchedule 合并，避免启动登记与 pre-step 同时到达时创建两条任务。
+  const schedulePending = new Map()
+  const ensureSchedule = (sessionId) => {
+    const sid = String(sessionId ?? '')
+    if (sid === '') return Promise.resolve()
+    const existing = schedulePending.get(sid)
+    if (existing !== undefined) return existing
+    const pending = ensureScheduleOnce(sid).finally(() => {
+      if (schedulePending.get(sid) === pending) schedulePending.delete(sid)
+    })
+    schedulePending.set(sid, pending)
+    return pending
   }
 
   /** 从消息数据里取纯文本（跳过工具调用/附件等）。 */
@@ -602,12 +648,12 @@ export function installDream(ctx, service) {
   }
 
   /** 面板/命令切换某会话的夜梦。 */
-  const setSessionEnabled = (sessionId, enabled) => {
+  const setSessionEnabled = async (sessionId, enabled) => {
     const sid = String(sessionId ?? '')
     if (sid === '') return { ok: false, error: '缺少 sessionId' }
     const entry = setDreamEnabled(root, sid, enabled === true)
-    if (enabled === true) void ensureSchedule(sid)
-    else void removeSchedule(sid)
+    if (enabled === true) await ensureSchedule(sid)
+    else await removeSchedule(sid)
     return { ok: true, session: { id: sid, enabled: entry?.enabled === true } }
   }
 

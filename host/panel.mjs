@@ -248,7 +248,7 @@ export function createPanelHandler({ ctx, service, pluginVersion = '0.0.0' }) {
           return send(res, 200, { ok: true, message: '已保存到 元/settings.json；重启 DSH 后生效。', settings: result.settings })
         }
         if (action === 'dream-session') {
-          const result = service?.dream?.setSessionEnabled?.(String(body?.sessionId ?? ''), body?.enabled === true)
+          const result = await service?.dream?.setSessionEnabled?.(String(body?.sessionId ?? ''), body?.enabled === true)
           if (result === undefined) return send(res, 400, { ok: false, error: '夜梦未安装' })
           return send(res, result.ok === true ? 200 : 400, {
             ok: result.ok === true,

@@ -318,7 +318,7 @@ export function commandDefinitions(scope, service, pluginVersion = VERSION) {
           const agent = invocation?.agent
           const sessionId = String(agent?.session?.id ?? agent?.id ?? '')
           if (sessionId === '') return { kind: 'error', text: '拿不到当前会话 id。' }
-          const result = service?.dream?.setSessionEnabled?.(sessionId, on) ?? { ok: false, error: '夜梦未安装' }
+          const result = await service?.dream?.setSessionEnabled?.(sessionId, on) ?? { ok: false, error: '夜梦未安装' }
           return result.ok === true
             ? { kind: 'success', text: `当前会话（${sessionId.slice(0, 8)}…）夜梦已${on ? '开启' : '关闭'}；明日 23:30 ${on ? '会' : '不会'}自动整理。` }
             : { kind: 'error', text: result.error ?? '操作失败' }

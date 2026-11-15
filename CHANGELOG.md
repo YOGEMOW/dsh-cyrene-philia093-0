@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5] — 2026-11-15
+
+- 适配 DSH `0.2.2-rc.1` schedule API：`create` 的 `timing/target`、`edit` 删除/更新、
+  `list` 的 `{items}`；修复夜梦任务创建失败与旧日程残留。
+- 关闭夜梦现在会等待删除完成；启动时清理已关闭会话的旧日程；并发 `ensureSchedule` 合并。
+- 测试：213 项。
+
 ## [0.6.4] — 2026-11-08
 
 - 修复思源月响/年轮/锚点历史文档每几秒被删除重建：`loadMirrorState` 补回
